@@ -5,6 +5,12 @@ def print_help():
     print("Current commands: ")
     print("1. help: Shows this")
     print("2. exit: Exits the process, nothing is saved")
+    print("3. eval: ")
+    print("4. und: Refreshes/Updates the local NHL database")
+    print("5. and: Add nicknames to the database")
+    print("6. ubd: Add \"old\" bets (from bookies that's located on a local file) to database")
+    print("7. gen: Generate a CSV file containing all information for a player going back to 2017/09/15")
+
 
 
 
@@ -20,13 +26,12 @@ if __name__ == "__main__":
             print("Exiting...")
             break
 
-        
-        # Database commands
+
+        # Dev
         elif arg_in.lower() == 'eval':
             eval_bets()
 
-        # Dev
-
+        
         elif arg_in.lower() == 'und':
             update_nhl_db()
             print("Nhl database updated")
