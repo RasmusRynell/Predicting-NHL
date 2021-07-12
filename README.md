@@ -13,8 +13,8 @@ This project explores the idea of using different machine learning techniques to
 - Load and select features from CSV file to be used in different ML techniques (Data preprocessing)
 - Create a pipeline for both using and testing and evaluating ML techniques
 - Add more data (maybe xG for both player and teams)
-- Create a better way of scraping the web both for data
-- Create a better way of scraping the web both for previous bets and their outcomes
+- Create a better way of scraping the web for data
+- Create a better way of scraping the web for previous bets and their outcomes
 - Create a user interface either as an app or on the web
 
 ### Long term new features
