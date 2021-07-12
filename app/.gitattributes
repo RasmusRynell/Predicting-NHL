@@ -1,0 +1,8 @@
+*.unibet filter=lfs diff=lfs merge=lfs -text
+*.betway filter=lfs diff=lfs merge=lfs -text
+*.betsson filter=lfs diff=lfs merge=lfs -text
+*.bethard filter=lfs diff=lfs merge=lfs -text
+*.ss filter=lfs diff=lfs merge=lfs -text
+*.bet365 filter=lfs diff=lfs merge=lfs -text
+*.db filter=lfs diff=lfs merge=lfs -text
+*.csv filter=lfs diff=lfs merge=lfs -text
