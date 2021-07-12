@@ -88,4 +88,5 @@ The application is then started, to then do certain things just enter in a comma
 
 <br><br/>
 ## Contributors
-- @RasmusRynell
+- [RasmusRynell](https://github.com/RasmusRynell)
+- [Awarty](https://github.com/Awarty)
