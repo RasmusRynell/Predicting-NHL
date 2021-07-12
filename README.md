@@ -41,15 +41,22 @@ This project explores the idea of using different machine learning techniques to
 git clone git@github.com:RasmusRynell/Predicting-NHL.git
 </pre>
 ### Create environment
+*Side comment:
+If "python3" does not work, try "python" and if it still does not work, download and install python.*
+
+Navigate into to project and create an environment
 <pre>
+cd Predicting-NHL
 python3 -m venv env
 </pre>
 ### Activate environment
 On Windows:
-<pre>env\Scripts\activate.bat </pre>
+<pre>source env\Scripts\activate.bat </pre>
 On Unix/MacOS:
 <pre>source env/bin/activate </pre>
 
+### Install packages
+<pre>python3 -m pip install -r requirements.txt</pre>
 ## How to use *(Under construction)*
 
 
