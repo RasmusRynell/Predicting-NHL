@@ -32,6 +32,19 @@ In order to use the NHL database we followed [this](https://gitlab.com/dword4/nh
 <br><br/>
 ### Preprocessing
 
+#### Feature selection
+
+#### Feature extraction
+
+#### Dimensionality reduction
+
+#### Missing data removal / prediction
+
+#### Transformation
+
+#### Discretization
+
+
 <br><br/>
 ### Machine learning
 
@@ -89,6 +102,8 @@ The application is then started, to then do certain things just enter in a comma
 * "ubd" *Add "old" bets (from bookies but that's located on a local file) to database*
 
 * "gen" *Generate a CSV file containing all information for a player going back to 2017/09/15*
+
+* "pre" *Preprocess a csv file according to a configuration file*
 
 <br><br/>
 ## Contributors
