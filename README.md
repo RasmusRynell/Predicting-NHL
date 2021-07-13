@@ -1,7 +1,7 @@
 # Predicting NHL stats (shots on goal)
 
 ## Overview
-This project explores the idea of using different machine learning techniques to determine different stats in NHL games. Research and testing of different techniques has previously been done in [this](https://github.com/RasmusRynell/sports_betting_test) project.
+This project explores the idea of using different machine learning techniques to determine different stats in NHL games. Research and testing of different techniques has previously mainly been done in [this](https://github.com/RasmusRynell/sports_betting_test) project.
 
 ### Current features
 - About 5000 predictions for “Shots on goal” in NHL games from different betting sites
@@ -24,14 +24,18 @@ This project explores the idea of using different machine learning techniques to
 <br><br/>
 ## Inner workings *(Under construction)*
 ### Data collection
+In order to perform different ML techniques, data is needed, for now we use NHL's own (free and very detailed) database to gather all our data. We take this data and store it in our own [sqlite](https://www.sqlite.org/index.html) database to be used and updated when one wants/needs. The reasoning behind having our own database is quite simple, it’s a lot of data to ask for each time we want to do a prediction. This combined with the fact that we in the end want this process to be done once each day in the season the number of times we ask for a specific game in the database gets quickly out of control.
 
+#### NHL's database
+In order to use the NHL database we followed [this](https://gitlab.com/dword4/nhlapi/-/blob/master/stats-api.md) incredible documentation. Since we know we want all game data for every game x seasons back all we had to do was loop through each day for that period and request all games that occurred on that day. We then took that data and put it in our own database in order to be used later. To update the database is then to only request data for games that have not yet (according to our database) been played, by doing it this way we don’t have to keep requesting data that never changes.
 
+<br><br/>
 ### Preprocessing
 
-
+<br><br/>
 ### Machine learning
 
-
+<br><br/>
 ### Evaluating the results
 
 <br><br/>
