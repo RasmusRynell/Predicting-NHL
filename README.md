@@ -3,13 +3,13 @@
 ## Overview
 This project explores the idea of using different machine learning techniques to determine different stats in NHL games. Research and testing of different techniques has previously mainly been done in [this](https://github.com/RasmusRynell/sports_betting_test) project.
 
-### Current features
-- About 5000 predictions for “Shots on goal” in NHL games from different betting sites
+### Current features / functionality
+- A database containing about 5000 predictions for “Shots on goal” in NHL games from different betting sites
 - A way to add more "new" predictions by copy-pasting them from sites into text files
 - Request data from NHL’s own database to populate your own internal database (in order to use less internet and have a faster running program)
 - Produce a CSV file containing all data related to a prediction, this includes player statistics, players teams statistics, and enemy teams statistics for as many games back as one wants (typically no more than 5)
 
-### Futures features
+### Features in the future 
 - Load and select features from CSV file to be used in different ML techniques (Data preprocessing)
 - Create a pipeline for both using and testing and evaluating ML techniques
 - Add more data (maybe xG for both player and teams)
