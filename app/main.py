@@ -10,6 +10,7 @@ def print_help():
     print("5. and: Add nicknames to the database")
     print("6. ubd: Add \"old\" bets (from bookies that's located on a local file) to database")
     print("7. gen: Generate a CSV file containing all information for a player going back to 2017/09/15")
+    print("8. pre: Perform preprocessing")
 
 
 
@@ -26,12 +27,10 @@ if __name__ == "__main__":
             print("Exiting...")
             break
 
-
-        # Dev
         elif arg_in.lower() == 'eval':
             eval_bets()
 
-        
+        # Dev
         elif arg_in.lower() == 'und':
             update_nhl_db()
             print("Nhl database updated")
@@ -58,6 +57,15 @@ if __name__ == "__main__":
             print("Enter player id (\"b\" for back) (EX: 8475167)")
             player_id = 8475167#input(">>> > ")
             generate_csv(player_id)
+
+        elif arg_in.lower() == 'pre':
+            # Feature extraction / selection
+            # From file or from "input"?
+            extract_and_select_var = {}
+            with open('./external/preprocessing_configs/test.cfg') as f:
+                extract_and_select_var = json.loads(f.read())
+            save_csv(extract_and_select(extract_and_select_var), extract_and_select_var['file'], "_e_s")
+
 
         else:
             print(f"\"{arg_in}\" is no command")
