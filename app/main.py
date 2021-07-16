@@ -27,8 +27,8 @@ if __name__ == "__main__":
             print("Exiting...")
             break
 
-        elif arg_in.lower() == 'eval':
-            eval_bets()
+        #elif arg_in.lower() == 'eval':
+        #    eval_bets()
 
         # Dev
         elif arg_in.lower() == 'und':
@@ -58,13 +58,14 @@ if __name__ == "__main__":
             player_id = 8475167#input(">>> > ")
             generate_csv(player_id)
 
-        elif arg_in.lower() == 'pre':
+
+        elif arg_in.lower() == 'eval':
             # Feature extraction / selection
-            # From file or from "input"?
+            # From file or from "input"
             extract_and_select_var = {}
             with open('./external/preprocessing_configs/test.cfg') as f:
                 extract_and_select_var = json.loads(f.read())
-            save_csv(extract_and_select(extract_and_select_var), extract_and_select_var['file'], "_e_s")
+            save_csv(evaluate_setup(extract_and_select_var), extract_and_select_var['save_path'])
 
 
         else:

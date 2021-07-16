@@ -8,7 +8,7 @@ from source.db_models.nhl_models import *
 from source.bets_handler import *
 from source.nhl_handler import *
 from source.nhl_gen import *
-from source.preprocessing import preprocessing
+from source.eval import *
 from tqdm import tqdm
 from datetime import date, datetime, timedelta
 import csv
@@ -96,11 +96,9 @@ def generate_csv(player_id):
     nhl_session.close()
 
 
-def save_csv(df, path, append):
-    name, end = path.split(".")
-    df.to_csv("./external/csvs/" + name + append + "." + end, sep=';', encoding='utf-8', index=False)
+def save_csv(df, path):
+    df.to_csv(f"./external/csvs/{path}", sep=';', encoding='utf-8', index=False)
 
-def extract_and_select(config):
-    df1 = preprocessing.extract_data(config['file'], config['extract'])
-    df2 = preprocessing.select_data(config['file'], config['select'])
-    return pd.concat([df1, df2], axis=1, join='inner')
+
+def evaluate_setup(config):
+    return run_pipeline(config)

@@ -31,14 +31,20 @@ def generate_data_for(player_id, nhl_session, games_to_go_back, season, path=Non
     if season == "all":
         for i in tqdm(range(2008, 2025)):
             season = str(i) + str(i+1)
-            print(playerStatsForGames[playerStatsForGames.season_Game == str(season)].shape)
             new_df = add_games_back(playerStatsForGames[playerStatsForGames.season_Game == str(season)], games_to_go_back)
-            print(new_df.shape)
             df_total = pd.concat([df_total, new_df])
-            print(df_total.shape)
 
     else:
         df_total = add_games_back(playerStatsForGames[playerStatsForGames.season_Game == str(season)], games_to_go_back)
+
+    df_total["O_1.5"] = (df_total["shots_SkaterStats"] > 1.5).astype(int)
+    df_total["O_2.5"] = (df_total["shots_SkaterStats"] > 2.5).astype(int)
+    df_total["O_3.5"] = (df_total["shots_SkaterStats"] > 3.5).astype(int)
+    df_total["O_4.5"] = (df_total["shots_SkaterStats"] > 4.5).astype(int)
+    df_total["U_1.5"] = (df_total["shots_SkaterStats"] < 1.5).astype(int)
+    df_total["U_2.5"] = (df_total["shots_SkaterStats"] < 2.5).astype(int)
+    df_total["U_3.5"] = (df_total["shots_SkaterStats"] < 3.5).astype(int)
+    df_total["U_4.5"] = (df_total["shots_SkaterStats"] < 4.5).astype(int)
 
     if path:
         stats_csv = df_total.to_csv(path, sep=';', encoding='utf-8', index=False)
@@ -50,7 +56,7 @@ def add_games_back(df, games_to_go_back):
     df_total = pd.DataFrame()
     for i in range(1, games_to_go_back + 1):
         dfc = df.copy()
-        dfc = dfc.shift(periods=i+1)
+        dfc = dfc.shift(periods=i)
         dfc.columns = [u + "_{}_games_back".format(i) for u in dfc.head()]
         df_total = pd.concat([df_total, dfc], axis=1)
     df = pd.concat([df, df_total], axis=1)
