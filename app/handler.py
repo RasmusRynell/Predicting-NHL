@@ -101,4 +101,4 @@ def save_csv(df, path):
 
 
 def evaluate_setup(config):
-    return run_pipeline(config)
+    return run_eval_pipeline(config)

@@ -7,16 +7,42 @@ import pandas as pd
 
 
 # A function that takes in a configuration dict and runs a scikitlearn pipeline with its settings
-def run_pipeline(config):
+def run_eval_pipeline(config):
     # Load the data
     data = pd.read_csv("./external/csvs/" + config['data_path'], sep=";")
 
+    pre_fix = data.shape
+
+    # Turn false and true into 0 and 1
+    if config['replace_missing_values_with_zero']:
+        print("Replacing true/false with 1/0")
+        data.replace(['false', 'true'], [0, 1], inplace=True)
+        data.replace(['False', 'True'], [0, 1], inplace=True)
+
+    # Drop columns with all missing values
+    if config['drop_all_missing_columns']:
+        print("Dropping all columns with missing values")
+        data.dropna(axis=1, how='all', inplace=True)
+
+    # Drop rows with missing values
+    if config['drop_all_missing_rows']:
+        print("Dropping rows with missing values")
+        data = data.dropna(axis=0, how='any')
+
+    print("Data shape before removing missing values: " + str(pre_fix))
+    print("Data shape after removing missing values: " + str(data.shape))
+
+    # save to csv
+    if config['save_cleaned_csv']:
+        data.to_csv("./external/csvs/cleaned_" + config['data_path'], sep=";", index=False)
+
     # Split the data into train and test sets
-    X_train, X_test, y_train, y_test = train_test_split(data.drop(config['remove_cols'], axis=1),
+    X_train, X_test, y_train, y_test = train_test_split(data.drop(config['remove_cols'], axis=1, errors='ignore'),
                                                         data[config['train_test_split']['target_col']],
                                                         test_size=config['train_test_split']['test_percent'],
                                                         random_state=config['train_test_split']['random_state'],
                                                         shuffle=config['train_test_split']['shuffle'])
+
 
 
     # A function call to create the right scaler
@@ -45,6 +71,24 @@ def run_pipeline(config):
     
 
     # Create the pipeline
+    pipeline = construct_pipeline(scaler, encoder, decomposition, model)
+
+    # Fit the pipeline
+    print("Running: " + str(pipeline))
+    pipeline.fit(X_train, y_train)
+
+
+    # Calculate the accuracy
+    accuracy = pipeline.score(X_test, y_test)
+    print("Accuracy:", accuracy)
+    X_test["pred"] = pipeline.predict(X_test)
+
+
+    return X_test
+
+
+
+def construct_pipeline(scaler, encoder, decomposition, model):
     pipeline = None
     if scaler != None and encoder != None and decomposition != None:
         pipeline = Pipeline([('encoder', encoder), ('scaler', scaler), ('decomposition', decomposition), ('model', model)])
@@ -70,24 +114,7 @@ def run_pipeline(config):
         pipeline = Pipeline([('model', model)])
     else:
         pipeline = Pipeline([('model', model)])
-
-    print("Running: " + str(pipeline))
-    
-    # Fit the pipeline
-    pipeline.fit(X_train, y_train)
-
-
-    # Calculate the accuracy
-    accuracy = pipeline.score(X_test, y_test)
-    print("Accuracy:", accuracy)
-    X_test["pred"] = pipeline.predict(X_test)
-
-
-    return X_test
-
-
-
-
+    return pipeline
 
 
 
@@ -95,114 +122,114 @@ def construct_scaler(scaler_config):
     scaler = None
     if scaler_config['name'] == 'standard':
         from sklearn.preprocessing import StandardScaler
-        scaler = StandardScaler(*scaler_config['settings'])
+        scaler = StandardScaler(**scaler_config['settings'])
     elif scaler_config['name'] == 'minmax':
         from sklearn.preprocessing import MinMaxScaler
-        scaler = MinMaxScaler(*scaler_config['settings'])
+        scaler = MinMaxScaler(**scaler_config['settings'])
     elif scaler_config['name'] == 'maxabs':
         from sklearn.preprocessing import MaxAbsScaler
-        scaler = MaxAbsScaler(*scaler_config['settings'])
+        scaler = MaxAbsScaler(**scaler_config['settings'])
     elif scaler_config['name'] == 'robust':
         from sklearn.preprocessing import RobustScaler
-        scaler = RobustScaler(*scaler_config['settings'])
+        scaler = RobustScaler(**scaler_config['settings'])
     elif scaler_config['name'] == 'quantile':
         from sklearn.preprocessing import QuantileTransformer
-        scaler = QuantileTransformer(*scaler_config['settings'])
+        scaler = QuantileTransformer(**scaler_config['settings'])
     elif scaler_config['name'] == 'power':
         from sklearn.preprocessing import PowerTransformer
-        scaler = PowerTransformer(*scaler_config['settings'])
+        scaler = PowerTransformer(**scaler_config['settings'])
     elif scaler_config['name'] == 'normalize':
         from sklearn.preprocessing import Normalizer
-        scaler = Normalizer(*scaler_config['settings'])
+        scaler = Normalizer(**scaler_config['settings'])
     return scaler
+
 
 def construct_encoder(encoder_config):
     encoder = NotImplementedError
     if encoder_config['name'] == 'onehot':
         from sklearn.preprocessing import OneHotEncoder
-        encoder = OneHotEncoder(*encoder_config['settings'])
+        encoder = OneHotEncoder(**encoder_config['settings'])
     elif encoder_config['name'] == 'label':
         from sklearn.preprocessing import LabelEncoder
-        encoder = LabelEncoder(*encoder_config['settings'])
+        encoder = LabelEncoder(**encoder_config['settings'])
     elif encoder_config['name'] == 'Ordinal':
         from sklearn.preprocessing import OrdinalEncoder
-        encoder = OrdinalEncoder(*encoder_config['settings'])
+        encoder = OrdinalEncoder(**encoder_config['settings'])
     return encoder
+
 
 def construct_matrix_decomposition(decomposition_config):
     decomposition = None
     if decomposition_config['name'] == 'pca':
         from sklearn.decomposition import PCA
-        decomposition = PCA(*decomposition_config['settings'])
+        decomposition = PCA(**decomposition_config['settings'])
     elif decomposition_config['name'] == 'kernelpca':
         from sklearn.decomposition import KernelPCA
-        decomposition = KernelPCA(*decomposition_config['settings'])
+        decomposition = KernelPCA(**decomposition_config['settings'])
     elif decomposition_config['name'] == 'face':
         from sklearn.decomposition import FactorAnalysis
-        decomposition = FactorAnalysis(*decomposition_config['settings'])
+        decomposition = FactorAnalysis(**decomposition_config['settings'])
     elif decomposition_config['name'] == 'nmf':
         from sklearn.decomposition import NMF
-        decomposition = NMF(*decomposition_config['settings'])
+        decomposition = NMF(**decomposition_config['settings'])
     elif decomposition_config['name'] == 'sparsepca':
         from sklearn.decomposition import SparsePCA
-        decomposition = SparsePCA(*decomposition_config['settings'])
+        decomposition = SparsePCA(**decomposition_config['settings'])
     elif decomposition_config['name'] == 'factoranalysis':
         from sklearn.decomposition import FactorAnalysis
-        decomposition = FactorAnalysis(*decomposition_config['settings'])
+        decomposition = FactorAnalysis(**decomposition_config['settings'])
     elif decomposition_config['name'] == 'truncatedsvd':
         from sklearn.decomposition import TruncatedSVD
-        decomposition = TruncatedSVD(*decomposition_config['settings'])
+        decomposition = TruncatedSVD(**decomposition_config['settings'])
     elif decomposition_config['name'] == 'pca_sparse':
         from sklearn.decomposition import PCA
-        decomposition = PCA(*decomposition_config['settings'])
+        print(*decomposition_config['settings'])
+        decomposition = PCA(**decomposition_config['settings'])
     return decomposition
-
-
-
 
 
 def construct_model(model_config):
     model = None
     if model_config['name'] == 'logistic':
         from sklearn.linear_model import LogisticRegression
-        model = LogisticRegression(*model_config['settings'])
+        model = LogisticRegression(**model_config['settings'])
     elif model_config['name'] == 'svm':
         from sklearn.svm import SVC
-        model = SVC(*model_config['settings'])
+        model = SVC(**model_config['settings'])
     elif model_config['name'] == 'knn':
         from sklearn.neighbors import KNeighborsClassifier
-        model = KNeighborsClassifier(*model_config['settings'])
+        model = KNeighborsClassifier(**model_config['settings'])
     elif model_config['name'] == 'gaussian':
         from sklearn.naive_bayes import GaussianNB
-        model = GaussianNB(*model_config['settings'])
+        model = GaussianNB(**model_config['settings'])
     elif model_config['name'] == 'tree':
         from sklearn.tree import DecisionTreeClassifier
-        model = DecisionTreeClassifier(*model_config['settings'])
+        model = DecisionTreeClassifier(**model_config['settings'])
     elif model_config['name'] == 'forest':
         from sklearn.ensemble import RandomForestClassifier
-        model = RandomForestClassifier(*model_config['settings'])
+        model = RandomForestClassifier(**model_config['settings'])
     elif model_config['name'] == 'gradient':
         from sklearn.ensemble import GradientBoostingClassifier
-        model = GradientBoostingClassifier(*model_config['settings'])
+        model = GradientBoostingClassifier(**model_config['settings'])
     elif model_config['name'] == 'adaboost':
         from sklearn.ensemble import AdaBoostClassifier
-        model = AdaBoostClassifier(*model_config['settings'])
+        model = AdaBoostClassifier(**model_config['settings'])
     elif model_config['name'] == 'extra':
         from sklearn.ensemble import ExtraTreesClassifier
-        model = ExtraTreesClassifier(*model_config['settings'])
+        model = ExtraTreesClassifier(**model_config['settings'])
     elif model_config['name'] == 'bagging':
         from sklearn.ensemble import BaggingClassifier
-        model = BaggingClassifier(*model_config['settings'])
+        model = BaggingClassifier(**model_config['settings'])
     elif model_config['name'] == 'gradientboosting':
         from sklearn.ensemble import GradientBoostingClassifier
-        model = GradientBoostingClassifier(*model_config['settings'])
+        model = GradientBoostingClassifier(**model_config['settings'])
     elif model_config['name'] == 'voting':
         from sklearn.ensemble import VotingClassifier
-        model = VotingClassifier(*model_config['settings'])
+        model = VotingClassifier(**model_config['settings'])
     elif model_config['name'] == 'mlp':
         from sklearn.neural_network import MLPClassifier
-        model = MLPClassifier(*model_config['settings'])
+        model = MLPClassifier(**model_config['settings'])
     elif model_config['name'] == 'sgd':
         from sklearn.linear_model import SGDClassifier
-        model = SGDClassifier(*model_config['settings'])
+        model = SGDClassifier(**model_config['settings'])
     return model
