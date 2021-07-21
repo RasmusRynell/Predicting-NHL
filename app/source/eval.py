@@ -69,15 +69,36 @@ def run_eval_pipeline(config):
     # Create the pipeline
     pipeline = construct_pipeline(scaler, col_transformer, decomposition, model)
 
-    # Fit the pipeline
-    print("Running: " + str(pipeline))
-    pipeline.fit(X_train, y_train)
+    score = None
+    # Cross validate the pipeline
+    if 'cross_validate' in config:
+        from sklearn.model_selection import cross_val_score
+        print("Cross validating the pipeline")
+        print(config['cross_validate']['settings'])
+        scores = cross_val_score(pipeline, X_train, y_train, **config['cross_validate']['settings']).mean()
+        print("Cross validation score:", scores)
+        print("Cross validation std:", scores.std())
+        print(y_train.value_counts(normalize=True))
 
+        pipeline.fit(X_train, y_train)
+        score = pipeline.score(X_test, y_test)
+        
+        # print confusion matrix
+        y_pred = pipeline.predict(X_test)
+        print(pd.crosstab(y_test, y_pred, rownames=['True'], colnames=['Predicted'], margins=True))
+        X_test["pred"] = y_pred
 
-    # Calculate the accuracy
-    accuracy = pipeline.score(X_test, y_test)
-    print("Accuracy:", accuracy)
-    X_test["pred"] = pipeline.predict(X_test)
+        print("Score on test: " + str(score))
+
+    else:
+        # Fit the pipeline
+        print("Fitting pipeline without cross validation: " + str(pipeline))
+        pipeline.fit(X_train, y_train)
+
+        # Calculate accuracy
+        accuracy = pipeline.score(X_test, y_test)
+        print("Accuracy:", accuracy)
+        X_test["pred"] = pipeline.predict(X_test)
 
 
     return X_test
