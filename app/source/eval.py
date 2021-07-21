@@ -39,10 +39,7 @@ def run_eval_pipeline(config):
     # Split the data into train and test sets
     X_train, X_test, y_train, y_test = train_test_split(data.drop(config['remove_cols'], axis=1, errors='ignore'),
                                                         data[config['train_test_split']['target_col']],
-                                                        test_size=config['train_test_split']['test_percent'],
-                                                        random_state=config['train_test_split']['random_state'],
-                                                        shuffle=config['train_test_split']['shuffle'])
-
+                                                        **config['train_test_split']['settings'])
 
 
     # A function call to create the right scaler
