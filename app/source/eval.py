@@ -51,10 +51,10 @@ def run_eval_pipeline(config):
         scaler = construct_scaler(config['scaler'])
 
 
-    # A function call to create the right encoder
-    encoder = None
-    if 'encoder' in config:
-        encoder = construct_encoder(config['encoder'])
+    # A function call to create the right column tranformer
+    col_transformer = None
+    if 'col_transformer' in config:
+        col_transformer = construct_col_transformer(config['col_transformer'])
 
 
     # A function call to create the right matrix decomposition
@@ -65,13 +65,12 @@ def run_eval_pipeline(config):
 
     # A function call to create the right model
     model = construct_model(config['model'])
-    
     if model == None:
         return None
     
 
     # Create the pipeline
-    pipeline = construct_pipeline(scaler, encoder, decomposition, model)
+    pipeline = construct_pipeline(scaler, col_transformer, decomposition, model)
 
     # Fit the pipeline
     print("Running: " + str(pipeline))
@@ -88,32 +87,37 @@ def run_eval_pipeline(config):
 
 
 
-def construct_pipeline(scaler, encoder, decomposition, model):
+
+
+
+
+def construct_pipeline(scaler, col_transformer, decomposition, model):
     pipeline = None
-    if scaler != None and encoder != None and decomposition != None:
-        pipeline = Pipeline([('encoder', encoder), ('scaler', scaler), ('decomposition', decomposition), ('model', model)])
-    elif scaler != None and encoder != None:
-        pipeline = Pipeline([('encoder', encoder), ('scaler', scaler), ('model', model)])
+    if scaler != None and col_transformer != None and decomposition != None:
+        pipeline = Pipeline([('col_transformer', col_transformer), ('scaler', scaler), ('decomposition', decomposition), ('model', model)])
+    elif scaler != None and col_transformer != None:
+        pipeline = Pipeline([('col_transformer', col_transformer), ('scaler', scaler), ('model', model)])
     elif scaler != None and decomposition != None:
         pipeline = Pipeline([('scaler', scaler), ('decomposition', decomposition), ('model', model)])
     elif scaler != None and model != None:
         pipeline = Pipeline([('scaler', scaler), ('model', model)])
-    elif encoder != None and decomposition != None:
-        pipeline = Pipeline([('encoder', encoder), ('decomposition', decomposition), ('model', model)])
-    elif encoder != None and model != None:
-        pipeline = Pipeline([('encoder', encoder), ('model', model)])
+    elif col_transformer != None and decomposition != None:
+        pipeline = Pipeline([('col_transformer', col_transformer), ('decomposition', decomposition), ('model', model)])
+    elif col_transformer != None and model != None:
+        pipeline = Pipeline([('col_transformer', col_transformer), ('model', model)])
     elif decomposition != None and model != None:
         pipeline = Pipeline([('decomposition', decomposition), ('model', model)])
     elif scaler != None:
         pipeline = Pipeline([('scaler', scaler), ('model', model)])
-    elif encoder != None:
-        pipeline = Pipeline([('encoder', encoder), ('model', model)])
+    elif col_transformer != None:
+        pipeline = Pipeline([('col_transformer', col_transformer), ('model', model)])
     elif decomposition != None:
         pipeline = Pipeline([('decomposition', decomposition), ('model', model)])
     elif model != None:
         pipeline = Pipeline([('model', model)])
     else:
         pipeline = Pipeline([('model', model)])
+    
     return pipeline
 
 
@@ -141,21 +145,34 @@ def construct_scaler(scaler_config):
     elif scaler_config['name'] == 'normalize':
         from sklearn.preprocessing import Normalizer
         scaler = Normalizer(**scaler_config['settings'])
-    return scaler
+    
+    if scaler != None:
+        return scaler
+    raise Exception("No scaler found in scaler config")
 
 
-def construct_encoder(encoder_config):
-    encoder = NotImplementedError
-    if encoder_config['name'] == 'onehot':
-        from sklearn.preprocessing import OneHotEncoder
-        encoder = OneHotEncoder(**encoder_config['settings'])
-    elif encoder_config['name'] == 'label':
-        from sklearn.preprocessing import LabelEncoder
-        encoder = LabelEncoder(**encoder_config['settings'])
-    elif encoder_config['name'] == 'Ordinal':
-        from sklearn.preprocessing import OrdinalEncoder
-        encoder = OrdinalEncoder(**encoder_config['settings'])
-    return encoder
+def construct_col_transformer(col_transformer_config):
+    from sklearn.compose import make_column_transformer
+
+    encoders = []
+    for encoder_config in col_transformer_config['encoders']:
+        encoder = None
+        if encoder_config['name'] == 'onehot':
+            from sklearn.preprocessing import OneHotEncoder
+            encoder = OneHotEncoder(**encoder_config['settings'])
+        elif encoder_config['name'] == 'label':
+            from sklearn.preprocessing import LabelEncoder
+            encoder = LabelEncoder(**encoder_config['settings'])
+        elif encoder_config['name'] == 'Ordinal':
+            from sklearn.preprocessing import OrdinalEncoder
+            encoder = OrdinalEncoder(**encoder_config['settings'])
+
+        encoders.append((encoder, encoder_config['targets']))
+
+    if len(encoders) > 0:
+        print(encoders)
+        return make_column_transformer(*encoders, **col_transformer_config['settings'])
+    raise Exception("No encoders found in col_transformer config")
 
 
 def construct_matrix_decomposition(decomposition_config):
@@ -185,7 +202,10 @@ def construct_matrix_decomposition(decomposition_config):
         from sklearn.decomposition import PCA
         print(*decomposition_config['settings'])
         decomposition = PCA(**decomposition_config['settings'])
-    return decomposition
+
+    if decomposition != None:
+        return decomposition
+    raise Exception("No decomposition found in decomposition config")
 
 
 def construct_model(model_config):
@@ -232,4 +252,7 @@ def construct_model(model_config):
     elif model_config['name'] == 'sgd':
         from sklearn.linear_model import SGDClassifier
         model = SGDClassifier(**model_config['settings'])
-    return model
+    
+    if model != None:
+        return model
+    raise Exception("No model found in model config")
