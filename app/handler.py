@@ -9,6 +9,7 @@ from source.bets_handler import *
 from source.nhl_handler import *
 from source.nhl_gen import *
 from source.eval import *
+from source.predict import *
 from tqdm import tqdm
 from datetime import date, datetime, timedelta
 import csv
@@ -75,12 +76,14 @@ def update_bets_db(file = None):
     bet_session = Session_bets()
     nhl_session = Session_nhl()
 
+    oldpwd=os.getcwd()
     os.chdir("./external/saved_bets")
     if not file:
         for file in tqdm(glob.glob("*")):
             add_file_to_db(file, nhl_session, bet_session)
     else:
         add_file_to_db(file, nhl_session, bet_session)
+    os.chdir(oldpwd)
 
     bet_session.commit()
     bet_session.close()
@@ -91,14 +94,60 @@ def generate_csv(player_id):
     global Session_nhl
     nhl_session = Session_nhl()
 
-    generate_data_for(player_id, nhl_session, 5, "all", f"./external/csvs/{player_id}.csv")
+    data, file_name = generate_data_for(player_id, nhl_session, 5, "all")
 
     nhl_session.close()
+    return (data, file_name)
 
 
 def save_csv(df, path):
-    df.to_csv(f"./external/csvs/{path}", sep=';', encoding='utf-8', index=False)
+    df.to_csv(f"./external/csvs/data_csvs/{path}", sep=';', encoding='utf-8', index=False)
 
 
 def evaluate_setup(config):
     return run_eval_pipeline(config)
+
+
+
+
+# A function that check if data of player contains data for game
+def get_data_from_file(player_id, game_id, date):
+    date = datetime.strptime(date, '%Y-%m-%d')
+    print(date)
+    # Loop through all files in folder
+    oldpwd=os.getcwd()
+    os.chdir("./external/csvs/data_csvs/")
+    for file in glob.glob("*"):
+        file_name = file.split(".")[0]
+        file_player_id, file_date = file_name.split("_")
+        file_date = datetime.strptime(file_date, '%Y-%m-%d-%H-%M-%S')
+        
+        if str(player_id) == str(file_player_id) and date <= file_date:
+            print("Found file: " + file)
+            os.chdir(oldpwd)
+            return pd.read_csv("./external/csvs/data_csvs/" + file, sep=';', encoding='utf-8')
+        
+    os.chdir(oldpwd)
+    print("No file sufficient found")
+    return False
+
+
+def predict_games(games):
+    for game in games:
+        print(f"Predicting player: {game['player_id']} in game {game['game_id']}")
+
+        # Todo: Check if game is already predicted (If not, predict else use old prediction) (maybe add some sort of id to know if its used same type of prediction config)
+        
+        # Todo: Generate data if doesn't exist
+        data = get_data_from_file(game['player_id'], game['game_id'], game['date'])
+
+        # Todo: Predict game
+
+        # Read config from file
+        config = None
+        with open(game['config']) as f:
+            config = json.loads(f.read())
+
+        pred_df = predict_game(data, config)
+
+        # Todo: Save prediction
