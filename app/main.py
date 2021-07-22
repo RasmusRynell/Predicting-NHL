@@ -52,11 +52,10 @@ if __name__ == "__main__":
                 print("Bets database updated")
 
         elif arg_in.lower() == 'gen':
-            start_time = datetime(2017, 9, 15)
-            end_time = datetime.now()
-            print("Enter player id (\"b\" for back) (EX: 8475167)")
-            player_id = 8475167#input(">>> > ")
-            generate_csv(player_id)
+            player_id = 8475167
+            data, game_date = generate_csv(player_id)
+            game_date = str(game_date).replace(" ", "-").replace(":", "-")
+            save_csv(data, str(player_id) + "_" + str(game_date) + ".csv")
 
 
         elif arg_in.lower() == 'eval':
@@ -66,6 +65,16 @@ if __name__ == "__main__":
             with open('./external/configs/test.cfg') as f:
                 extract_and_select_var = json.loads(f.read())
             save_csv(evaluate_setup(extract_and_select_var), extract_and_select_var['save_path'])
+
+        elif arg_in.lower() == 'pred':
+            games = [{
+                'player_id': 8475167,
+                'game_id': '201709210',
+                'date': "2021-05-01",
+                'config': "./external/configs/new_test.cfg"
+            }]
+
+            predict_games(games)
 
 
         else:

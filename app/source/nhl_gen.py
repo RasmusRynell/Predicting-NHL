@@ -9,7 +9,7 @@ from sqlalchemy.orm import aliased
 from tqdm import tqdm
 import csv
 
-def generate_data_for(player_id, nhl_session, games_to_go_back, season, path=None):
+def generate_data_for(player_id, nhl_session, games_to_go_back, season):
     PlayerTeamStats = aliased(TeamStats)
     OppTeamStats = aliased(TeamStats)
     query = (
@@ -46,10 +46,10 @@ def generate_data_for(player_id, nhl_session, games_to_go_back, season, path=Non
     df_total["U_3.5"] = (df_total["shots_SkaterStats"] < 3.5).astype(int)
     df_total["U_4.5"] = (df_total["shots_SkaterStats"] < 4.5).astype(int)
 
-    if path:
-        stats_csv = df_total.to_csv(path, sep=';', encoding='utf-8', index=False)
-        return path
-    return df_total
+    # Get date of last game in df_total
+    last_game_date = df_total.iloc[-1]["gameDate_Game"]
+
+    return (df_total, last_game_date)
 
 
 def add_games_back(df, games_to_go_back):
