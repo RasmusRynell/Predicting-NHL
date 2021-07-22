@@ -63,7 +63,7 @@ if __name__ == "__main__":
             # Feature extraction / selection
             # From file or from "input"
             extract_and_select_var = {}
-            with open('./external/preprocessing_configs/test.cfg') as f:
+            with open('./external/configs/test.cfg') as f:
                 extract_and_select_var = json.loads(f.read())
             save_csv(evaluate_setup(extract_and_select_var), extract_and_select_var['save_path'])
 
