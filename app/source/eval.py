@@ -31,6 +31,7 @@ def run_eval_pipeline(config):
 
     print("Data shape before removing missing values: " + str(pre_fix))
     print("Data shape after removing missing values: " + str(data.shape))
+    print("")
 
     # save to csv
     if config['save_cleaned_csv']:
@@ -67,28 +68,36 @@ def run_eval_pipeline(config):
     
 
     # Create the pipeline
-    pipeline = construct_pipeline(scaler, col_transformer, decomposition, model)
+    pipeline = construct_pipeline(config, scaler, col_transformer, decomposition, model)
 
     score = None
     # Cross validate the pipeline
     if 'cross_validate' in config:
+        print("Running: ", pipeline)
+        print("")
+
         from sklearn.model_selection import cross_val_score
-        print("Cross validating the pipeline")
+        print("Cross validating the pipeline with settings: ")
         print(config['cross_validate']['settings'])
         scores = cross_val_score(pipeline, X_train, y_train, **config['cross_validate']['settings']).mean()
-        print("Cross validation score:", scores)
-        print("Cross validation std:", scores.std())
+        print("score on cross validation:", scores)
+        print("std on cross validation:", scores.std())
+
+        print("\nHow many right one would have only guessing on one")
         print(y_train.value_counts(normalize=True))
+        print("")
 
         pipeline.fit(X_train, y_train)
         score = pipeline.score(X_test, y_test)
-        
-        # print confusion matrix
+
+        print("\nScore on test: " + str(score))
+
+        print("Confusion matrix")
         y_pred = pipeline.predict(X_test)
         print(pd.crosstab(y_test, y_pred, rownames=['True'], colnames=['Predicted'], margins=True))
+        print("")
         X_test["pred"] = y_pred
 
-        print("Score on test: " + str(score))
 
     else:
         # Fit the pipeline
@@ -109,32 +118,32 @@ def run_eval_pipeline(config):
 
 
 
-def construct_pipeline(scaler, col_transformer, decomposition, model):
+def construct_pipeline(config, scaler, col_transformer, decomposition, model):
     pipeline = None
     if scaler != None and col_transformer != None and decomposition != None:
-        pipeline = Pipeline([('col_transformer', col_transformer), ('scaler', scaler), ('decomposition', decomposition), ('model', model)])
+        pipeline = Pipeline([('col_transformer', col_transformer), ('scaler', scaler), ('decomposition', decomposition), ('model', model)], **config['pipeline']['settings'])
     elif scaler != None and col_transformer != None:
-        pipeline = Pipeline([('col_transformer', col_transformer), ('scaler', scaler), ('model', model)])
+        pipeline = Pipeline([('col_transformer', col_transformer), ('scaler', scaler), ('model', model)], **config['pipeline']['settings'])
     elif scaler != None and decomposition != None:
-        pipeline = Pipeline([('scaler', scaler), ('decomposition', decomposition), ('model', model)])
+        pipeline = Pipeline([('scaler', scaler), ('decomposition', decomposition), ('model', model)], **config['pipeline']['settings'])
     elif scaler != None and model != None:
-        pipeline = Pipeline([('scaler', scaler), ('model', model)])
+        pipeline = Pipeline([('scaler', scaler), ('model', model)], **config['pipeline']['settings'])
     elif col_transformer != None and decomposition != None:
-        pipeline = Pipeline([('col_transformer', col_transformer), ('decomposition', decomposition), ('model', model)])
+        pipeline = Pipeline([('col_transformer', col_transformer), ('decomposition', decomposition), ('model', model)], **config['pipeline']['settings'])
     elif col_transformer != None and model != None:
-        pipeline = Pipeline([('col_transformer', col_transformer), ('model', model)])
+        pipeline = Pipeline([('col_transformer', col_transformer), ('model', model)], **config['pipeline']['settings'])
     elif decomposition != None and model != None:
-        pipeline = Pipeline([('decomposition', decomposition), ('model', model)])
+        pipeline = Pipeline([('decomposition', decomposition), ('model', model)], **config['pipeline']['settings'])
     elif scaler != None:
-        pipeline = Pipeline([('scaler', scaler), ('model', model)])
+        pipeline = Pipeline([('scaler', scaler), ('model', model)], **config['pipeline']['settings'])
     elif col_transformer != None:
-        pipeline = Pipeline([('col_transformer', col_transformer), ('model', model)])
+        pipeline = Pipeline([('col_transformer', col_transformer), ('model', model)], **config['pipeline']['settings'])
     elif decomposition != None:
-        pipeline = Pipeline([('decomposition', decomposition), ('model', model)])
+        pipeline = Pipeline([('decomposition', decomposition), ('model', model)], **config['pipeline']['settings'])
     elif model != None:
-        pipeline = Pipeline([('model', model)])
+        pipeline = Pipeline([('model', model)], **config['pipeline']['settings'])
     else:
-        pipeline = Pipeline([('model', model)])
+        pipeline = Pipeline([('model', model)], **config['pipeline']['settings'])
     
     return pipeline
 
@@ -188,7 +197,6 @@ def construct_col_transformer(col_transformer_config):
         encoders.append((encoder, encoder_config['targets']))
 
     if len(encoders) > 0:
-        print(encoders)
         return make_column_transformer(*encoders, **col_transformer_config['settings'])
     raise Exception("No encoders found in col_transformer config")
 
@@ -218,7 +226,6 @@ def construct_matrix_decomposition(decomposition_config):
         decomposition = TruncatedSVD(**decomposition_config['settings'])
     elif decomposition_config['name'] == 'pca_sparse':
         from sklearn.decomposition import PCA
-        print(*decomposition_config['settings'])
         decomposition = PCA(**decomposition_config['settings'])
 
     if decomposition != None:
