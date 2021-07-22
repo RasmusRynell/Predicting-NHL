@@ -68,82 +68,115 @@ def run_eval_pipeline(config):
     
 
     # Create the pipeline
-    pipeline = construct_pipeline(config, scaler, col_transformer, decomposition, model)
+    pipeline = construct_pipeline(config['pipeline'], scaler, col_transformer, decomposition, model)
+
+
+    if 'hyperparameter_optimization' in config:
+        pipeline = hyperparameter_optimization(config['hyperparameter_optimization'], pipeline, X_train, y_train)
 
     score = None
     # Cross validate the pipeline
     if 'cross_validate' in config:
-        print("Running: ", pipeline)
-        print("")
+        if 'verbose' in config and config['verbose']: print(f"Running: {pipeline} \n")
 
         from sklearn.model_selection import cross_val_score
-        print("Cross validating the pipeline with settings: ")
-        print(config['cross_validate']['settings'])
+        if 'verbose' in config and config['verbose']: print("Cross validating the pipeline with settings: ")
+        if 'verbose' in config and config['verbose']: print(config['cross_validate']['settings'])
         scores = cross_val_score(pipeline, X_train, y_train, **config['cross_validate']['settings']).mean()
-        print("score on cross validation:", scores)
-        print("std on cross validation:", scores.std())
+        if 'verbose' in config and config['verbose']: print("score on cross validation:", scores)
+        if 'verbose' in config and config['verbose']: print("std on cross validation:", scores.std())
 
-        print("\nHow many right one would have only guessing on one")
-        print(y_train.value_counts(normalize=True))
-        print("")
+        if 'verbose' in config and config['verbose']: print("\nHow many right one would have only guessing on one")
+        if 'verbose' in config and config['verbose']: print(f"{y_train.value_counts(normalize=True)}\n")
 
         pipeline.fit(X_train, y_train)
         score = pipeline.score(X_test, y_test)
 
-        print("\nScore on test: " + str(score))
-
-        print("Confusion matrix")
+        if 'verbose' in config and config['verbose']: print("\nScore on test: " + str(score))
+        if 'verbose' in config and config['verbose']: print("Confusion matrix")
         y_pred = pipeline.predict(X_test)
-        print(pd.crosstab(y_test, y_pred, rownames=['True'], colnames=['Predicted'], margins=True))
-        print("")
+        if 'verbose' in config and config['verbose']: print(f"{pd.crosstab(y_test, y_pred, rownames=['True'], colnames=['Predicted'], margins=True)}\n")
+
+        # Save answers
         X_test["pred"] = y_pred
 
 
     else:
         # Fit the pipeline
-        print("Fitting pipeline without cross validation: " + str(pipeline))
+        if 'verbose' in config and config['verbose']: print("Fitting pipeline without cross validation: " + str(pipeline))
         pipeline.fit(X_train, y_train)
 
         # Calculate accuracy
         accuracy = pipeline.score(X_test, y_test)
-        print("Accuracy:", accuracy)
-        X_test["pred"] = pipeline.predict(X_test)
+        if 'verbose' in config and config['verbose']: print("Accuracy:", accuracy)
 
+        # Save answers
+        X_test["pred"] = pipeline.predict(X_test)
 
     return X_test
 
 
 
 
+def hyperparameter_optimization(hp_o_config, pipeline, X_train, y_train):
+    from sklearn.model_selection import GridSearchCV
+    from sklearn.model_selection import RandomizedSearchCV
+    
+    grid_params = []
+    for key, value in hp_o_config['params'].items():
+        for k,v in value.items():
+            grid_params.append({key + "__" + k: v})
+
+    print(grid_params)
+
+    cv = None
+    if hp_o_config['name'] == 'grid_search':
+        if 'verbose' in hp_o_config and hp_o_config['verbose']: print("Running: Grid search")
+        
+        # Create the grid
+        cv = GridSearchCV(pipeline, param_grid=grid_params, **hp_o_config['settings'])
 
 
+    elif hp_o_config['name'] == 'random_search':
+        raise Exception("Not implemented yet")
+        if 'verbose' in hp_o_config and hp_o_config['verbose']: print("Running: Random search")
 
-def construct_pipeline(config, scaler, col_transformer, decomposition, model):
+    # Fit the grid
+    cv.fit(X_train, y_train)
+
+    # Print the results
+    print("Best score:", cv.best_score_)
+    print("Best parameters:", cv.best_params_)
+    print(cv.best_estimator_)
+    return cv.best_estimator_
+
+
+def construct_pipeline(pipline_config, scaler, col_transformer, decomposition, model):
     pipeline = None
     if scaler != None and col_transformer != None and decomposition != None:
-        pipeline = Pipeline([('col_transformer', col_transformer), ('scaler', scaler), ('decomposition', decomposition), ('model', model)], **config['pipeline']['settings'])
+        pipeline = Pipeline([('col_transformer', col_transformer), ('scaler', scaler), ('decomposition', decomposition), ('model', model)], **pipline_config['settings'])
     elif scaler != None and col_transformer != None:
-        pipeline = Pipeline([('col_transformer', col_transformer), ('scaler', scaler), ('model', model)], **config['pipeline']['settings'])
+        pipeline = Pipeline([('col_transformer', col_transformer), ('scaler', scaler), ('model', model)], **pipline_config['settings'])
     elif scaler != None and decomposition != None:
-        pipeline = Pipeline([('scaler', scaler), ('decomposition', decomposition), ('model', model)], **config['pipeline']['settings'])
+        pipeline = Pipeline([('scaler', scaler), ('decomposition', decomposition), ('model', model)], **pipline_config['settings'])
     elif scaler != None and model != None:
-        pipeline = Pipeline([('scaler', scaler), ('model', model)], **config['pipeline']['settings'])
+        pipeline = Pipeline([('scaler', scaler), ('model', model)], **pipline_config['settings'])
     elif col_transformer != None and decomposition != None:
-        pipeline = Pipeline([('col_transformer', col_transformer), ('decomposition', decomposition), ('model', model)], **config['pipeline']['settings'])
+        pipeline = Pipeline([('col_transformer', col_transformer), ('decomposition', decomposition), ('model', model)], **pipline_config['settings'])
     elif col_transformer != None and model != None:
-        pipeline = Pipeline([('col_transformer', col_transformer), ('model', model)], **config['pipeline']['settings'])
+        pipeline = Pipeline([('col_transformer', col_transformer), ('model', model)], **pipline_config['settings'])
     elif decomposition != None and model != None:
-        pipeline = Pipeline([('decomposition', decomposition), ('model', model)], **config['pipeline']['settings'])
+        pipeline = Pipeline([('decomposition', decomposition), ('model', model)], **pipline_config['settings'])
     elif scaler != None:
-        pipeline = Pipeline([('scaler', scaler), ('model', model)], **config['pipeline']['settings'])
+        pipeline = Pipeline([('scaler', scaler), ('model', model)], **pipline_config['settings'])
     elif col_transformer != None:
-        pipeline = Pipeline([('col_transformer', col_transformer), ('model', model)], **config['pipeline']['settings'])
+        pipeline = Pipeline([('col_transformer', col_transformer), ('model', model)], **pipline_config['settings'])
     elif decomposition != None:
-        pipeline = Pipeline([('decomposition', decomposition), ('model', model)], **config['pipeline']['settings'])
+        pipeline = Pipeline([('decomposition', decomposition), ('model', model)], **pipline_config['settings'])
     elif model != None:
-        pipeline = Pipeline([('model', model)], **config['pipeline']['settings'])
+        pipeline = Pipeline([('model', model)], **pipline_config['settings'])
     else:
-        pipeline = Pipeline([('model', model)], **config['pipeline']['settings'])
+        pipeline = Pipeline([('model', model)], **pipline_config['settings'])
     
     return pipeline
 
@@ -184,7 +217,7 @@ def construct_col_transformer(col_transformer_config):
     encoders = []
     for encoder_config in col_transformer_config['encoders']:
         encoder = None
-        if encoder_config['name'] == 'onehot':
+        if encoder_config['name'] == 'onehotencoder':
             from sklearn.preprocessing import OneHotEncoder
             encoder = OneHotEncoder(**encoder_config['settings'])
         elif encoder_config['name'] == 'label':
