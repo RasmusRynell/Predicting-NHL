@@ -123,7 +123,6 @@ def get_data_from_file(player_id, game_id, date):
         file_date = datetime.strptime(file_date, '%Y-%m-%d-%H-%M-%S')
         
         if str(player_id) == str(file_player_id) and date <= file_date:
-            print("Found file: " + file)
             os.chdir(oldpwd)
             return pd.read_csv("./external/csvs/data_csvs/" + file, sep=';', encoding='utf-8')
         
