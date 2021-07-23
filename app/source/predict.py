@@ -13,6 +13,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.decomposition import PCA
 from sklearn.ensemble import StackingClassifier
 from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import roc_auc_score
 
 import numpy as np
 import pandas as pd
@@ -50,7 +51,7 @@ def predict_game(org_data, config):
         #     'classifier__kernel': ['rbf'],
         #     'classifier__gamma': [0.001, 0.01, 0.1, 1, 10]
         # }
-        svm_pipeline = run_pipeline(X_train, X_test, y_train, y_test, col_transformer, target, SVC(C=1, gamma=0.01), grid_params)
+        svm_pipeline = run_pipeline(X_train, X_test, y_train, y_test, col_transformer, target, SVC(C=1, gamma=0.01,probability=True), grid_params)
         
 
         # Naive Bayes
@@ -82,19 +83,25 @@ def predict_game(org_data, config):
             ('forest', forest_pipeline)
         ]
 
+        # Create meta-pipeline
         clf = StackingClassifier(
             estimators=estimators,
             final_estimator=LogisticRegression(),
             cv=5,
             verbose=1,
-            n_jobs=-1
+            n_jobs=-1,
+            stack_method='predict_proba'
         )
 
         clf.fit(X_train, y_train)
         y_pred = clf.predict(X_test)
-        print(f"Stacking report: {classification_report(y_test, y_pred)}")
+        print(f"\n\nStacking report: ")
+        print("{classification_report(y_test, y_pred)}")
         print(f"Stacking acc: {accuracy_score(y_test, y_pred)}")
         print(f"{y_train.value_counts(normalize=True)}")
+        
+        # Print ROC AUC
+        print(f"ROC AUC: {roc_auc_score(y_test, y_pred)}")
 
 
         # Neural network
@@ -108,7 +115,7 @@ def run_pipeline(X_train, X_test, y_train, y_test, col_transformer, target, mode
         ('col_transformer', col_transformer),
         ('standard_scaler', StandardScaler()),
         ('pca', PCA(n_components=10)),
-        ('classifier', model)
+        ('classifier', model),
     ])
     print("\n")
 
@@ -116,6 +123,10 @@ def run_pipeline(X_train, X_test, y_train, y_test, col_transformer, target, mode
     if grid_params:
         grid_search = GridSearchCV(pipeline, grid_params, cv=5, n_jobs=-1)
         grid_search.fit(X_train, y_train)
+
+        # Print ROC AUC score
+        print(f"ROC AUC: {roc_auc_score(y_test, grid_search.predict_proba(X_test)[:, 1])}")
+
         print("Best score:", grid_search.best_score_)
         print("Best params:", grid_search.best_params_)
         print("Best estimator:", grid_search.best_estimator_)
@@ -126,7 +137,8 @@ def run_pipeline(X_train, X_test, y_train, y_test, col_transformer, target, mode
     
     else:
         # Cross validate pipeline
-        scores = cross_val_score(pipeline, X_train, y_train, cv=5, scoring='accuracy', n_jobs=-1, verbose=0)
+        scores = cross_val_score(
+            pipeline, X_train, y_train, cv=5, scoring='roc_auc', n_jobs=-1, verbose=0)
         print(f'Crossvaledating {target} using {str(model)}')
         print(f'Accuracy: {scores.mean():.2%}')
         print(f'Std: {scores.std()}')
@@ -135,6 +147,9 @@ def run_pipeline(X_train, X_test, y_train, y_test, col_transformer, target, mode
         pipeline.fit(X_train, y_train)
         y_pred = pipeline.predict(X_test)
         print(f'Accuracy on test data: {accuracy_score(y_test, y_pred):.2%}')
+
+        # Print ROC AUC score
+        print(f"ROC AUC: {roc_auc_score(y_test, pipeline.predict_proba(X_test)[:, 1])}")
 
     return pipeline
     
