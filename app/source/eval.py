@@ -120,7 +120,6 @@ def run_eval_pipeline(config):
 
 def hyperparameter_optimization(hp_o_config, pipeline, X_train, y_train):
     from sklearn.model_selection import GridSearchCV
-    from sklearn.model_selection import RandomizedSearchCV
     
     grid_params = []
     for key, value in hp_o_config['params'].items():
