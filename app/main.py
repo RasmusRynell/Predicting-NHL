@@ -52,10 +52,11 @@ if __name__ == "__main__":
                 print("Bets database updated")
 
         elif arg_in.lower() == 'gen':
-            player_id = 8475167
-            data, game_date = generate_csv(player_id)
-            game_date = str(game_date).replace(" ", "-").replace(":", "-")
-            save_csv(data, str(player_id) + "_" + str(game_date) + ".csv")
+            player_ids = [8471214, 8475167, 8478463, 8475744, 8477504, 8477492, 8480839, 8477499, 8476881]
+            for player_id in player_ids:
+                data, game_date = generate_csv(player_id)
+                game_date = str(game_date).replace(" ", "-").replace(":", "-")
+                save_csv(data, str(player_id) + "_" + str(game_date) + ".csv")
 
 
         elif arg_in.lower() == 'eval':
@@ -67,14 +68,81 @@ if __name__ == "__main__":
             save_csv(evaluate_setup(extract_and_select_var), extract_and_select_var['save_path'])
 
         elif arg_in.lower() == 'pred':
-            games = [{
+            games = [
+            {
+                'player_id': 8471214,
+                'game_id': '2020020730',
+                'date': '2021-04-22',
+                'target': ['3.5', '4.5'],
+                'config': "./external/configs/default.cfg"
+            },
+            {
                 'player_id': 8475167,
-                'game_id': '201709210',
-                'date': "2021-05-01",
-                'config': "./external/configs/new_test.cfg"
-            }]
+                'game_id': '2020020048',
+                'date': "2021-05-07",
+                'target': ['2.5'],
+                'config': "./external/configs/default.cfg"
+            },
+            {
+                'player_id': 8478463,
+                'game_id': '2020020839',
+                'date': "2021-05-24",
+                'target': ['2.5'],
+                'config': "./external/configs/default.cfg"
+            },
+            {
+                'player_id': 8475744,
+                'game_id': '2020020814',
+                'date': '2021-05-03',
+                'target': ['1.5'],
+                'config': "./external/configs/default.cfg"
+            },
+            {
+                'player_id': 8477504,
+                'game_id': '2020020834',
+                'date': '2021-05-05',
+                'target': ['1.5'],
+                'config': "./external/configs/default.cfg"
+            },
+            {
+                'player_id': 8477492,
+                'game_id': '2020030154',
+                'date': '2021-05-22',
+                'target': ['3.5'],
+                'config': "./external/configs/default.cfg"
+            },
+            {
+                'player_id': 8476881,
+                'game_id': '2020020162',
+                'date': '2021-05-12',
+                'target': ['2.5'],
+                'config': "./external/configs/default.cfg"
+            },
+            {
+                'player_id': 8477499,
+                'game_id': '2020020842',
+                'date': '2021-05-06',
+                'target': ['1.5'],
+                'config': "./external/configs/default.cfg"
+            },
+            {
+                'player_id': 8476881,
+                'game_id': '2020020162',
+                'date': '2021-05-12',
+                'target': ['2.5'],
+                'config': "./external/configs/default.cfg"
+            }
+            ]
 
-            predict_games(games)
+            predictions = predict_games(games)
+            
+            # Save predictions dict to a file
+            with open('./external/predictions/test.json', 'w') as f:
+                json.dump(predictions, f)
+                
+            print("Predictions saved to file")
+            print("Predictions: ")
+            print(json.dumps(predictions, indent=4))
 
 
         else:
