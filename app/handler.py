@@ -12,6 +12,7 @@ from source.eval import *
 from source.predict import *
 from tqdm import tqdm
 from datetime import date, datetime, timedelta
+import json
 import csv
 
 
@@ -111,9 +112,8 @@ def evaluate_setup(config):
 
 
 # A function that check if data of player contains data for game
-def get_data_from_file(player_id, game_id, date):
+def get_data_from_file(player_id, date):
     date = datetime.strptime(date, '%Y-%m-%d')
-    print(date)
     # Loop through all files in folder
     oldpwd=os.getcwd()
     os.chdir("./external/csvs/data_csvs/")
@@ -127,26 +127,36 @@ def get_data_from_file(player_id, game_id, date):
             return pd.read_csv("./external/csvs/data_csvs/" + file, sep=';', encoding='utf-8')
         
     os.chdir(oldpwd)
-    print("No file sufficient found")
-    return False
+    print("No sufficient file found, generating one")
+
+    data, game_date = generate_csv(player_id)
+    game_date = str(game_date).replace(" ", "-").replace(":", "-")
+    save_csv(data, str(player_id) + "_" + str(game_date) + ".csv")
+    return str(player_id) + "_" + str(game_date) + ".csv"
 
 
 def predict_games(games):
-    for game in games:
+    results = []
+    for game in tqdm(games):
         print(f"Predicting player: {game['player_id']} in game {game['game_id']}")
 
-        # Todo: Check if game is already predicted (If not, predict else use old prediction) (maybe add some sort of id to know if its used same type of prediction config)
-        
         # Todo: Generate data if doesn't exist
-        data = get_data_from_file(game['player_id'], game['game_id'], game['date'])
-
-        # Todo: Predict game
+        data = get_data_from_file(game['player_id'], game['date'])
 
         # Read config from file
         config = None
         with open(game['config']) as f:
             config = json.loads(f.read())
 
-        pred_df = predict_game(data, config)
 
-        # Todo: Save prediction
+        # Generate predictions
+        predictions = predict_game(data, config, game['game_id'], game['player_id'], game['target'])
+            
+        # Add predictions to results
+        results.append({'game_id': game['game_id'],
+                        'player_id': game['player_id'],
+                        'date': game['date'],
+                        'predictions': predictions
+                    })
+        
+    return results
