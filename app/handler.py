@@ -8,7 +8,6 @@ from source.db_models.nhl_models import *
 from source.bets_handler import *
 from source.nhl_handler import *
 from source.nhl_gen import *
-from source.eval import *
 from source.predict import *
 from tqdm import tqdm
 from datetime import date, datetime, timedelta
@@ -95,68 +94,76 @@ def generate_csv(player_id):
     global Session_nhl
     nhl_session = Session_nhl()
 
-    data, file_name = generate_data_for(player_id, nhl_session, 5, "all")
+    data = generate_data_for(player_id, nhl_session, 5, "all")
 
     nhl_session.close()
-    return (data, file_name)
+    return data
 
 
 def save_csv(df, path):
-    df.to_csv(f"./external/csvs/data_csvs/{path}", sep=';', encoding='utf-8', index=False)
-
-
-def evaluate_setup(config):
-    return run_eval_pipeline(config)
-
-
+    df.to_csv(f"./external/player_data/{path}", sep=';', encoding='utf-8', index=False)
 
 
 # A function that check if data of player contains data for game
-def get_data_from_file(player_id, date):
-    date = datetime.strptime(date, '%Y-%m-%d')
+def get_data_from_file(player_id):
     # Loop through all files in folder
     oldpwd=os.getcwd()
-    os.chdir("./external/csvs/data_csvs/")
+    os.chdir("./external/player_data/")
     for file in glob.glob("*"):
         file_name = file.split(".")[0]
-        file_player_id, file_date = file_name.split("_")
-        file_date = datetime.strptime(file_date, '%Y-%m-%d-%H-%M-%S')
         
-        if str(player_id) == str(file_player_id) and date <= file_date:
+        if str(player_id) == str(file_name):
             os.chdir(oldpwd)
-            return pd.read_csv("./external/csvs/data_csvs/" + file, sep=';', encoding='utf-8')
+            return pd.read_csv("./external/player_data/" + file, sep=';', encoding='utf-8')
         
     os.chdir(oldpwd)
     print("No sufficient file found, generating one")
 
-    data, game_date = generate_csv(player_id)
-    game_date = str(game_date).replace(" ", "-").replace(":", "-")
-    save_csv(data, str(player_id) + "_" + str(game_date) + ".csv")
-    return str(player_id) + "_" + str(game_date) + ".csv"
+    data = generate_csv(player_id)
+    save_csv(data, str(player_id) + ".csv")
+
+    return data
 
 
-def predict_games(games):
-    results = []
-    for game in tqdm(games):
-        print(f"Predicting player: {game['player_id']} in game {game['game_id']}")
+def predict_games(org_bets):
+    for player_id, values in tqdm(org_bets.items()):
+        over_under_games = {}
+        for game_id, game in values.items():
+            for sites in game['odds']:
+                for site_name, bets in sites.items():
+                    for O_U in bets.keys():
+                        if O_U not in list(over_under_games.keys()):
+                            over_under_games[O_U] = []
+                        over_under_games[O_U].append(game_id)
 
-        # Todo: Generate data if doesn't exist
-        data = get_data_from_file(game['player_id'], game['date'])
+        for target, games in over_under_games.items():
+            # Load data for player
+            data = get_data_from_file(player_id)
 
-        # Read config from file
-        config = None
-        with open(game['config']) as f:
-            config = json.loads(f.read())
+            predictions = predict_game(data, target, games)
+
+            for game_id, bets in predictions.items():
+                org_bets[player_id][game_id]['predictions'][target] = bets
+
+                
 
 
-        # Generate predictions
-        predictions = predict_game(data, config, game['game_id'], game['player_id'], game['target'])
-            
-        # Add predictions to results
-        results.append({'game_id': game['game_id'],
-                        'player_id': game['player_id'],
-                        'date': game['date'],
-                        'predictions': predictions
-                    })
+
+
+
+
+        # for target in tqdm(game["target"]):
+        #     print(f"Predicting player: {game['player_id']} in game {game['game_ids']}")
+
+        #     # Todo: Generate data if doesn't exist
+        #     data = get_data_from_file(game['player_id'], game['date'])
+
+        #     # Generate predictions
+        #     predictions = predict_game(data, game['game_ids'], target)
+
+        #     # Add predictions to results
+        #     results.append({'player_id': game['player_id'],
+        #                     'predictions': predictions
+        #             })
         
-    return results
+    return org_bets
