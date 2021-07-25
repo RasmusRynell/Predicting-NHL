@@ -13,7 +13,7 @@ def read_file(file):
             lines = reader.readlines()
     except Exception as e:
         return []
-        
+
     matches = {}
     current_key = ""
     for line in lines:
@@ -46,8 +46,8 @@ def read_file(file):
             else:
                 start_saving = unidecode(matches[match][i].lower()) == "over"
     games_under_data = {}
+    game = []
     for match in matches:
-        game = []
         start_saving = False
         games_under_data[match] = []
         for i in range(1, len(matches[match])):
@@ -59,10 +59,10 @@ def read_file(file):
             else:
                 start_saving = matches[match][i] == "Under"
     res = []
-    for match in games_player:       
+    for match in games_player:   
         home_team = match.split(" @ ")[1]
         away_team = match.split(" @ ")[0]
-        for i in range(0, len(games_player[match])):
+        for i in range(len(games_player[match])):
             player_name = unidecode(games_player[match][i].lower())
             player_target = games_over_data[match][2*i]
             player_odds_O = games_over_data[match][2*i+1]

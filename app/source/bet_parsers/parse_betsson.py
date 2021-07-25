@@ -22,11 +22,7 @@ def read_file(file):
             line = line.replace("\n","")
             tmp.append(line)
     find = "–"
-    res = []
-    for i in range(len(tmp)):
-        if tmp[i] == find:
-            res.append(i)
-
+    res = [i for i in range(len(tmp)) if tmp[i] == find]
     res.append(len(tmp)+1)
     for i in range(len(res)-1):
         game = tmp[res[i]-1:res[i+1]-1]
@@ -34,19 +30,17 @@ def read_file(file):
         matches[key] = game[3:]
 
     res = []
-    for match in matches:
+    for match, value in matches.items():
         home_team = unidecode(match.split(" - ")[0])
         away_team = unidecode(match.split(" - ")[1])
-        for i in range(0, len(matches[match]), 4):
+        for i in range(0, len(value), 4):
             info = matches[match][i:(i+4)]
-            player_name = ""
             name = info[0].split(" ")[:-2]
-            for i in range(len(name)):
-                if i == len(name)-1:
-                    player_name += name[i]
-                else:
-                    player_name += name[i] + " "
-            
+            player_name = "".join(
+                name[i] if i == len(name) - 1 else name[i] + " "
+                for i in range(len(name))
+            )
+
             player_name = unidecode(player_name)
             try:
                 player_target = info[0].split(" ")[-1]
