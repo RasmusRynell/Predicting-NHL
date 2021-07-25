@@ -63,30 +63,29 @@ def add_bet_to_db(bet, nhl_session, bets_session):
 
     if game_pk == -1:
         print("Game was not found, not adding bets {}".format(bet))
-    else:
-        if not bets_session.query(Bet).filter(and_(Bet.gamePk == game_pk,
+    elif not bets_session.query(Bet).filter(and_(Bet.gamePk == game_pk,
                                               Bet.playerId == player_id, \
                                               func.lower(Bet.site) == func.lower(bet[4]), \
                                               func.lower(Bet.overUnder) == func.lower(str(bet[7]).replace(",", ".")) \
                                                   )).all():
-            try:
-                new_bet = Bet()
-                new_bet.playerId = player_id
-                new_bet.homeTeamId = home_team
-                new_bet.awayTeamId = away_team
-                new_bet.dateTime = time
-                new_bet.site = bet[4]
-                new_bet.gamePk = game_pk
-                new_bet.overUnder = str(bet[7]).replace(",", ".")
-                new_bet.oddsOver = str(bet[5]).replace(",", ".")
-                new_bet.oddsUnder = str(bet[6]).replace(",", ".")
+        try:
+            new_bet = Bet()
+            new_bet.playerId = player_id
+            new_bet.homeTeamId = home_team
+            new_bet.awayTeamId = away_team
+            new_bet.dateTime = time
+            new_bet.site = bet[4]
+            new_bet.gamePk = game_pk
+            new_bet.overUnder = str(bet[7]).replace(",", ".")
+            new_bet.oddsOver = str(bet[5]).replace(",", ".")
+            new_bet.oddsUnder = str(bet[6]).replace(",", ".")
 
-                bets_session.add(new_bet)
-            except:
-                print("Something went wrong, did not add {}".format(bet))
-        else:
-            print("Bet already exists")
-            return
+            bets_session.add(new_bet)
+        except:
+            print("Something went wrong, did not add {}".format(bet))
+    else:
+        print("Bet already exists")
+        return
 
 
 def get_player_id_from_name(name, nhl_session):

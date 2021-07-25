@@ -7,13 +7,11 @@ import glob
 
 
 def predict_game(data, game_ids, target):
-   results = {}
-
    cleaned_data = clean_data(data.copy())
 
    #X_train, y_train, X_test, y_test = 
 
-   return results
+   return {}
 
 
 def clean_data(data):

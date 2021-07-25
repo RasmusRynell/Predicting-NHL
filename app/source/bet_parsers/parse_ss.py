@@ -24,10 +24,10 @@ def read_file(file):
         elif line != "":
             matches[current_key].append(line)
     res = []
-    for match in matches:
+    for match, value in matches.items():
         home_team = unidecode(match.split(" - ")[0])
         away_team = unidecode(match.split(" - ")[1])
-        for i in range(0, len(matches[match]), 3):
+        for i in range(0, len(value), 3):
             name_list = matches[match][i].split(" ")[:-4]
             first_name = name_list[0]
             last_name = name_list[1]
