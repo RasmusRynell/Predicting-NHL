@@ -143,7 +143,7 @@ def predict_games(org_bets):
             predictions = predict_game(data, games, target)
 
             for game_id, bets in predictions.items():
-                org_bets[player_id][game_id]['predictions'][target] = bets
+                org_bets[player_id][str(int(game_id))]['predictions'][target] = bets
 
                 
 
