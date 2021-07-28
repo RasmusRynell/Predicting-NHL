@@ -1,3 +1,4 @@
+import re
 import source.bet_parsers.parse_betsson as betsson
 import source.bet_parsers.parse_betway as betway
 import source.bet_parsers.parse_unibet as unibet
@@ -8,6 +9,7 @@ from source.db_models.bets_models import *
 from source.db_models.nhl_models import *
 from datetime import date, datetime, timedelta
 from sqlalchemy import func, and_, or_, not_
+import json
 
 
 def add_file_to_db(file, nhl_session, bets_session):
@@ -125,3 +127,29 @@ def get_team_id_from_name(name, nhl_session):
         raise "Cant find a player with that name..."
 
     return ids[0].id
+
+
+
+# get all bets from db
+def get_all_bets(bets_session):
+    result = {}
+
+    bets = bets_session.query(Bet).all()
+    for bet in bets:
+        if str(bet.playerId) not in result:
+            result[str(bet.playerId)] = {}
+
+        if str(bet.gamePk) not in result[str(bet.playerId)]:
+            result[str(bet.playerId)][str(bet.gamePk)] = {"data": {}, "odds": {}}
+        result[str(bet.playerId)][str(bet.gamePk)]['game_date'] = str(bet.dateTime.date())
+
+        if str(bet.site) not in result[str(bet.playerId)][str(bet.gamePk)]['odds']:
+            result[str(bet.playerId)][str(bet.gamePk)]['odds'][str(bet.site)] = {}
+
+        if str(bet.overUnder) not in result[str(bet.playerId)][str(bet.gamePk)]['odds'][str(bet.site)]:
+            result[str(bet.playerId)][str(bet.gamePk)]['odds'][str(bet.site)][str(bet.overUnder)] = {
+                'over': bet.oddsOver,
+                'under': bet.oddsUnder
+            }
+
+    return result

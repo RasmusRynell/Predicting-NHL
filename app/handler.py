@@ -3,12 +3,14 @@ import glob
 import os
 from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
 from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.sql.expression import true
 from source.db_models.bets_models import *
 from source.db_models.nhl_models import *
 from source.bets_handler import *
 from source.nhl_handler import *
 from source.nhl_gen import *
 from source.predict import *
+from source.evaluate_bets import *
 from tqdm import tqdm
 from datetime import date, datetime, timedelta
 import json
@@ -129,41 +131,71 @@ def predict_games(org_bets):
     for player_id, values in tqdm(org_bets.items()):
         over_under_games = {}
         for game_id, game in values.items():
-            for sites in game['odds']:
-                for site_name, bets in sites.items():
-                    for O_U in bets.keys():
-                        if O_U not in list(over_under_games.keys()):
-                            over_under_games[O_U] = []
-                        over_under_games[O_U].append(game_id)
+            for site_name, bets in game['odds'].items():
+                for O_U in bets.keys():
+                    if O_U not in list(over_under_games.keys()):
+                        over_under_games[O_U] = []
+                    over_under_games[O_U].append(game_id)
 
-        for target, games in over_under_games.items():
-            # Load data for player
-            data = get_data_from_file(player_id)
+        for target, games in tqdm(over_under_games.items()):
+            
+            # Remove duplicates from games
+            games = list(set(games))
 
-            predictions = predict_game(data, games, target)
+            predictions = None
+            if check_if_predictions_exists(player_id, target):
+                # Load predictions dict from file
+                predictions = load_predictions(player_id, target)
+            else:
+                # Load data for player
+                data = get_data_from_file(player_id)
 
-            for game_id, bets in predictions.items():
-                org_bets[player_id][str(int(game_id))]['predictions'][target] = bets
+                predictions = predict_game(data, games, target, player_id)
 
-                
+            if predictions:
+                # Save dict of predictions to file
+                with open("./external/predictions/" + str(player_id) + "_" + str(target) + "_preds.json", 'w') as fp:
+                    json.dump(predictions, fp)
 
+                for game_id, bets in predictions.items():
+                    org_bets[player_id][str(int(float(game_id)))]['data'][target] = bets
 
-
-
-
-
-        # for target in tqdm(game["target"]):
-        #     print(f"Predicting player: {game['player_id']} in game {game['game_ids']}")
-
-        #     # Todo: Generate data if doesn't exist
-        #     data = get_data_from_file(game['player_id'], game['date'])
-
-        #     # Generate predictions
-        #     predictions = predict_game(data, game['game_ids'], target)
-
-        #     # Add predictions to results
-        #     results.append({'player_id': game['player_id'],
-        #                     'predictions': predictions
-        #             })
+                else:
+                    print(f"No prediction for {player_id} {target}")
+            else:
+                print(f"Skipped {player_id} {target}")
         
     return org_bets
+
+
+def check_if_predictions_exists(player_id, target):
+    oldpwd=os.getcwd()
+    os.chdir("./external/predictions")
+    for file in glob.glob("*"):
+        file_name = file.split(".json")[0]
+        if file_name != "test":
+            file_player_id, file_target, _ = file_name.split("_")
+            if str(player_id) == str(file_player_id) and str(target) in file_target:
+                os.chdir(oldpwd)
+                return True
+    os.chdir(oldpwd)
+    return False
+
+def load_predictions(player_id, target):
+    with open("./external/predictions/" + str(player_id) + "_" + str(target) + "_preds.json", 'r') as fp:
+        return json.load(fp)
+
+
+def evaluate_bets(bets):
+    calculate_roi_with_unit_size(bets)
+    calculate_roi_with_kelly(bets)
+
+
+def get_bets():
+    bet_session = Session_bets()
+
+    res = get_all_bets(bet_session)
+
+    bet_session.close()
+
+    return res

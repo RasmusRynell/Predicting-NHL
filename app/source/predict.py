@@ -10,11 +10,13 @@ import glob
 from source.ML_models.basic_NN import get_model_acc as run_basic_NN
 
 
-def predict_game(data, game_ids, target):
-   print(f"Game ID: {game_ids} Target: {target}")
+def predict_game(data, game_ids, target, player_id):
+   # print(f"Game ID: {game_ids} Target: {target}")
 
    # Split the data to pred and train/test
-   X_train, X_test, X_pred, y_train, y_test = create_split(data.copy(), game_ids, target)
+   X_train, X_test, X_pred, y_train, y_test, y_pred = create_split(data.copy(), game_ids, target, player_id)
+   if X_train is None:
+      return None
 
    # Scale the data
    scaled_X_train, scaled_X_test, scaled_X_pred = scale_data(X_train, X_test, X_pred)
@@ -22,21 +24,30 @@ def predict_game(data, game_ids, target):
    # Create run and evaluate the model
    metrics, predictions = run_basic_NN(scaled_X_train, scaled_X_test, scaled_X_pred, y_train, y_test)
 
-   # Build the results
-   results = {
-       row["gamePk"]: {"over": predictions[index][0], "under": predictions[index][1], "metrics": metrics} for index, row in X_pred.iterrows()
+   for index, row in X_pred.iterrows():
+      if row.values[0] is None:
+         row.values[0] = -1
+
+   return {
+       row["gamePk"]: {
+           "pred": {
+               "under": predictions[index][0],
+               "over": predictions[index][1],
+               "metrics": metrics,
+           },
+           "ans": int(y_pred.iloc[index].values[0]),
+       }
+       for index, row in X_pred.iterrows()
    }
 
-   print("")
-   print(metrics)
-   print("-")
-   print(predictions)
 
-   return results
-
-
-def create_split(data, game_ids, target):
+def create_split(data, game_ids, target, player_id):
    target = "O_" + str(target)
+
+   # Check so that we have enough data to split
+   if len(data) < 100:
+      print(f"Not enough data to split {player_id}, {target}")
+      return None, None, None, None, None, None
 
    # Remove data with gamePk less than 1
    data = data[data["gamePk"] > 20090000]
@@ -48,7 +59,7 @@ def create_split(data, game_ids, target):
    data.set_index('gamePk', inplace=True)
 
    # Create a new dataframe with only the columns we want
-   relevant_features = get_correlating_features(data, target, 0.035)
+   relevant_features = get_correlating_features(data, target, 0.035)#5)
    # add "gamePk", "date"
    relevant_features = relevant_features.append(pd.Series(["gamePk", "date"]))
    drop_this = [x for x in data.columns if x not in relevant_features]
@@ -62,27 +73,38 @@ def create_split(data, game_ids, target):
    default_targets.remove(target)
    data.drop(columns=default_targets, axis=1, inplace=True)
 
+   # Check if all ids are in the data if not, remove the ids
+   for id in game_ids.copy():
+      if int(id) not in data.index:
+         print(f"{id} was not found in data for {player_id}")
+         game_ids.remove(id)
+
+   if len(game_ids) < 1:
+      return None, None, None, None, None, None
+
    # Get indexes of every game in game_ids
    indexes = [data.index.get_loc(int(x)) for x in game_ids]
 
    # Split the data at the lowest index in the indexes list
    train_test_data = data.iloc[:min(indexes)].copy().reset_index()
-   pred_data = data.iloc[min(indexes):].copy()
+   pred_data = data.iloc[min(indexes):].copy().reset_index()
 
-   # Remove rows with gamePk not in game_ids
-   dont_remove_this = [pred_data.index.get_loc(int(x)) for x in game_ids]
-   pred_data = pred_data.iloc[dont_remove_this].copy().reset_index()
+   # Remove rows with gamePk not in game_ids (without chaning the order!)
+   pred_data = pred_data[pred_data["gamePk"].astype(str).isin(game_ids)]
 
    # Create X and y for training and testing
    X_train, X_test, y_train, y_test = train_test_split(train_test_data.drop([target], axis=1), train_test_data[target], test_size=0.2, random_state=42, shuffle=False)
 
-   # Create X and y for prediction
+   # Create X and y for prediction and reset indexes
    X_pred = pred_data.drop([target], axis=1)
+   y_pred = pred_data[target]
+   X_pred = X_pred.reset_index().drop(columns=["index"])
+   y_pred = y_pred.reset_index().drop(columns=["index"])
 
    #print(f"Cols: {X_train.columns}")
-   print(len(X_train.columns))
+   print("Num of cols:", len(X_train.columns))
 
-   return (X_train, X_test, X_pred, y_train, y_test)
+   return (X_train, X_test, X_pred, y_train, y_test, y_pred)
 
 
 def scale_data(X_train, X_test, X_pred):

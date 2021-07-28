@@ -71,22 +71,16 @@ def generate_prediction_data(df):
     # loop through the seasons
     for season, season_df in df_grouped:
         for stat in forbidden_stats:
-            #season_df[f'{stat}_avr_1_games_back'] = season_df[stat].rolling(window=1, min_periods=1).mean().shift(1)#.fillna(0)
-            #season_df[f'{stat}_avr_3_games_back'] = season_df[stat].rolling(window=5, min_periods=1).mean().shift(1)#.fillna(0)
-            #season_df[f'{stat}_avr_10_games_back'] = season_df[stat].rolling(window=5, min_periods=1).mean().shift(1)#.fillna(0)
-            #season_df[f'{stat}_avr_1_season_back'] = season_df[stat].rolling(window=10000, min_periods=1).mean().shift(1)#.fillna(0)
-
             # Calculate the EMA for each season
-            season_df[f'{stat}_ema_1_games_back'] = season_df[stat].ewm(span=1, min_periods=1).mean().shift(1)#.fillna(0)
-            season_df[f'{stat}_ema_3_season_back'] = season_df[stat].ewm(span=3, min_periods=1).mean().shift(1)#.fillna(0)
-            season_df[f'{stat}_ema_10_season_back'] = season_df[stat].ewm(span=10, min_periods=1).mean().shift(1)#.fillna(0)
-            season_df[f'{stat}_ema_1_season_back'] = season_df[stat].ewm(span=10000, min_periods=1).mean().shift(1)#.fillna(0)
+            season_df[f'{stat}_ema_1_games_back'] = season_df[stat].ewm(span=1, min_periods=1).mean().shift(1).copy()#.fillna(0)
+            season_df[f'{stat}_ema_3_season_back'] = season_df[stat].ewm(span=3, min_periods=1).mean().shift(1).copy()#.fillna(0)
+            season_df[f'{stat}_ema_10_season_back'] = season_df[stat].ewm(span=10, min_periods=1).mean().shift(1).copy()#.fillna(0)
+            season_df[f'{stat}_ema_1_season_back'] = season_df[stat].ewm(span=10000, min_periods=1).mean().shift(1).copy()#.fillna(0)
 
         # Save data to the final df
         final_df = pd.concat([final_df, season_df])
         
     for stat in forbidden_stats:
-        #final_df[f'{stat}_avr_carrier'] = final_df[stat].rolling(window=100000, min_periods=1).mean().shift(1)#.fillna(0)
         final_df[f'{stat}_ema_carrier'] = final_df[stat].ewm(span=100000, min_periods=1).mean().shift(1)#.fillna(0)
 
     # Remove forbidden_stats from df

@@ -1,5 +1,7 @@
 from handler import *
-
+import json
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 def print_help():
     print("Current commands: ")
@@ -59,68 +61,28 @@ if __name__ == "__main__":
 
 
         elif arg_in.lower() == 'pred':
-            bets = {
-                '8471214' : {
-                    '2020020458' : {
-                        'game_date' : '2020-03-16',
-                        'odds' : [{
-                            'bet365': {
-                                # '1.5': {
-                                #     'Over' : '1.71',
-                                #     'Under' : '2.0'
-                                # },
-                                # '2.5': {
-                                #     'Over' : '1.71',
-                                #     'Under' : '2.0'
-                                # },
-                                '3.5': {
-                                    'Over' : '1.71',
-                                    'Under' : '2.0'
-                                },
-                                '4.5': {
-                                    'Over' : '1.71',
-                                    'Under' : '2.0'
-                                }
-                            }
-                        }],
-                        'predictions': {}
-                    },
-                    '2020020524' : {
-                        'game_date' : '2020-03-16',
-                        'odds' : [{
-                            'bet365': {
-                                # '1.5': {
-                                #     'Over' : '1.71',
-                                #     'Under' : '2.0'
-                                # },
-                                # '2.5': {
-                                #     'Over' : '1.71',
-                                #     'Under' : '2.0'
-                                # },
-                                '3.5': {
-                                    'Over' : '1.71',
-                                    'Under' : '2.0'
-                                },
-                                '4.5': {
-                                    'Over' : '1.71',
-                                    'Under' : '2.0'
-                                }
-                            }
-                        }],
-                        'predictions': {}
-                    }
-                }
-            }
+            bets = get_bets()
 
             predictions = predict_games(bets)
-            
+
+            print("Predictions saved to file")
+            print("Predictions: ")
+            #print(json.dumps(predictions, indent=4))
+
             # Save predictions dict to a file
             with open('./external/predictions/test.json', 'w') as f:
                 json.dump(predictions, f)
                 
-            print("Predictions saved to file")
-            print("Predictions: ")
-            print(json.dumps(predictions, indent=4))
+
+
+
+        elif arg_in.lower() == 'eval':
+            bets = {}
+            # Read in bets from file
+            with open('./external/predictions/test.json', 'r') as f:
+                bets = json.load(f)
+            evaluate_bets(bets)
+            
 
 
         else:
