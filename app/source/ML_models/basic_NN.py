@@ -7,6 +7,7 @@ import tensorflow as tf
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, LSTM
 
+
 def generate_model(input_dim, output_dim):
     # # create model
     model = Sequential()
@@ -18,6 +19,7 @@ def generate_model(input_dim, output_dim):
     # Compile model
     model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy', 'AUC'])
     #model.compile(loss='mean_squared_error', optimizer='adam', metrics=["accuracy"])
+
     return model
 
 
@@ -26,8 +28,6 @@ def get_model_acc(X_train, X_test, X_pred, y_train, y_test):
     y_train = hot_encode(X_train, y_train)
     y_test = hot_encode(X_test, y_test)
 
-    # create model
-    #model = generate_model(len(X_train[0]), len(y_train[0]))
 
     over_all = {
     "metrics": {
@@ -40,10 +40,12 @@ def get_model_acc(X_train, X_test, X_pred, y_train, y_test):
     }
     epochs = 150
     batch_size = 10
-    times_to_run = 10
-    print(f"epochs: {epochs}, batch_size: {batch_size}")
+    times_to_run = 1
+    print(f"epochs: {epochs}, batch_size: {batch_size}, times_to_run: {times_to_run}")
     for _ in tqdm(range(times_to_run)):
+        # create model
         model = generate_model(len(X_train[0]), len(y_train[0]))
+
         # Fit the model
         model.fit(X_train, y_train, epochs=epochs, batch_size=batch_size, verbose=0)
 
@@ -58,9 +60,10 @@ def get_model_acc(X_train, X_test, X_pred, y_train, y_test):
         # Add predictions
         model.fit(X_test, y_test, epochs=epochs, batch_size=batch_size, verbose=0)
         over_all["predictions"].append(model.predict(X_pred))
-        print("Predictions: ", model.predict(X_pred))
+        #print("Predictions: ", model.predict(X_pred))
 
-        #shuffle_weights(model)
+        # Reset the whole model
+        tf.keras.backend.clear_session()
 
 
     results = {
@@ -89,15 +92,16 @@ def get_model_acc(X_train, X_test, X_pred, y_train, y_test):
             predictions[i][index] = predictions[i][index] / sum(predictions[i])
             predictions[i][index] = predictions[i][index] / sum(predictions[i])
 
+    #print("Predictions: ", predictions)
     return results, predictions
 
 
 def hot_encode(X, Y_in):
 	Y = np.zeros((X.shape[0], 2))
 	for i, shots in enumerate(Y_in):
-		#Under
+		#under
 		Y[i, 0] = int(shots == 0)
-		#Over
+		#over
 		Y[i, 1] = int(shots == 1)
 	return Y
 
