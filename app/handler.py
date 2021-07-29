@@ -152,25 +152,26 @@ def predict_games(org_bets):
 
                 predictions = predict_game(data, games, target, player_id)
 
-            if predictions:
-                # Save dict of predictions to file
-                with open("./external/predictions/" + str(player_id) + "_" + str(target) + "_preds.json", 'w') as fp:
-                    json.dump(predictions, fp)
+                if predictions is None:
+                    print(f"No prediction for {player_id} {target}")
+                else:
+                    # Save dict of predictions to file
+                    with open("./external/predictions/temp/" + str(player_id) + "_" + str(target) + "_preds.json", 'w') as fp:
+                        json.dump(predictions, fp)
 
+            if predictions != None:
                 for game_id, bets in predictions.items():
                     org_bets[player_id][str(int(float(game_id)))]['data'][target] = bets
 
-                else:
-                    print(f"No prediction for {player_id} {target}")
             else:
                 print(f"Skipped {player_id} {target}")
-        
+
     return org_bets
 
 
 def check_if_predictions_exists(player_id, target):
     oldpwd=os.getcwd()
-    os.chdir("./external/predictions")
+    os.chdir("./external/predictions/temp/")
     for file in glob.glob("*"):
         file_name = file.split(".json")[0]
         if file_name != "test":
@@ -182,7 +183,8 @@ def check_if_predictions_exists(player_id, target):
     return False
 
 def load_predictions(player_id, target):
-    with open("./external/predictions/" + str(player_id) + "_" + str(target) + "_preds.json", 'r') as fp:
+    print(player_id, target)
+    with open("./external/predictions/temp/" + str(player_id) + "_" + str(target) + "_preds.json", 'r') as fp:
         return json.load(fp)
 
 
