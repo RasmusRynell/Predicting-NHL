@@ -29,7 +29,7 @@ def predict_game(data, game_ids, target, player_id):
          row.values[0] = -1
 
    return {
-       row["gamePk"]: {
+       str(int(float(row["gamePk"]))): {
            "pred": {
                "under": predictions[index][0],
                "over": predictions[index][1],
@@ -59,11 +59,13 @@ def create_split(data, game_ids, target, player_id):
    data.set_index('gamePk', inplace=True)
 
    # Create a new dataframe with only the columns we want
-   relevant_features = get_correlating_features(data, target, 0.035)#5)
+   relevant_features = get_correlating_features(data, target, 0.09)
+
    # add "gamePk", "date"
    relevant_features = relevant_features.append(pd.Series(["gamePk", "date"]))
    drop_this = [x for x in data.columns if x not in relevant_features]
    data.drop(columns=drop_this, axis=1, inplace=True)
+
 
    # Drop rows containing NAN
    data.dropna(inplace=True)

@@ -11,57 +11,61 @@ def calculate_roi_with_unit_size(games):
     for date, game_information in days:
         for playerId, player_games_information in game_information.items():
             for game in player_games_information:
-                best_odds = get_best_odds(game['odds'])
+                if game['data'] != {}:
+                    best_odds = get_best_odds(game['odds'])
 
-                for O_U_bet, value in best_odds.items():
-                    if game['data'] != {}:
-                        cash -= 1
-                        if game['data'][O_U_bet]['pred']['over'] > 0.5:
-                            if game['data'][O_U_bet]['ans'] == 1:
-                                cash += float(value['over']['value'])
-                        else:
-                            if game['data'][O_U_bet]['ans'] == 0:
-                                cash += float(value['under']['value'])
+                    for O_U_bet, value in best_odds.items():
+                        if O_U_bet in game['data']:
+                            cash -= 1
+                            if game['data'][O_U_bet]['pred']['over'] > 0.5:
+                                if game['data'][O_U_bet]['ans'] == 1:
+                                    cash += float(value['over']['value'])
+                            else:
+                                if game['data'][O_U_bet]['ans'] == 0:
+                                    cash += float(value['under']['value'])
         if cash < 0:
             print("Error: negative cash")
     print("Final roi with unit bet:", cash/100)
+
 
 def calculate_roi_with_kelly(games):
     days = convert_into_days(games.copy())
 
     cash = 100
+    kelly_ratio = 0.10
     # Loop trough all the days
     for date, game_information in days:
         current_cash = cash
         for playerId, player_games_information in game_information.items():
             for game in player_games_information:
-                best_odds = get_best_odds(game['odds'])
+                if game['data'] != {}:
+                    best_odds = get_best_odds(game['odds'])
 
-                for O_U_bet, value in best_odds.items():
-                    
-                    # Calculate the kelly
-                    b = float(value['over']['value']) - 1
-                    p = float(game['data'][O_U_bet]['pred']['over'])
-                    q = float(game['data'][O_U_bet]['pred']['under'])
-                    kelly_over = (b*p-q) / b
+                    for O_U_bet, value in best_odds.items():
+                        if O_U_bet in game['data']:
+                            # Calculate the kelly
+                            b = float(value['over']['value']) - 1
+                            p = float(game['data'][O_U_bet]['pred']['over'])
+                            q = float(game['data'][O_U_bet]['pred']['under'])
+                            kelly_over = (b*p-q) / b
 
-                    b = float(value['under']['value']) - 1
-                    p = float(game['data'][O_U_bet]['pred']['under'])
-                    q = float(game['data'][O_U_bet]['pred']['over'])
-                    kelly_under = (b*p-q) / b
+                            b = float(value['under']['value']) - 1
+                            p = float(game['data'][O_U_bet]['pred']['under'])
+                            q = float(game['data'][O_U_bet]['pred']['over'])
+                            kelly_under = (b*p-q) / b
 
 
                     if kelly_over > 0:
-                        current_cash -= cash * kelly_over
+                        current_cash -= cash * kelly_over * kelly_ratio
                         if game['data'][O_U_bet]['ans'] == 1:
-                            current_cash += float(value['over']['value']) * kelly_over
+                            current_cash += float(value['over']['value']) * kelly_over * kelly_ratio
                     if kelly_under > 0:
-                        current_cash -= cash * kelly_under
+                        current_cash -= cash * kelly_under * kelly_ratio
                         if game['data'][O_U_bet]['ans'] == 0:
-                            current_cash += float(value['under']['value']) * kelly_under
+                            current_cash += float(value['under']['value']) * kelly_under * kelly_ratio
         if current_cash < 0:
             print("Error: negative cash")
-            raise Exception("Negative cash")
+            #raise Exception("Negative cash")
         cash = current_cash
 
     print("Final roi kelly bet:", cash/100)
