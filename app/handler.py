@@ -189,7 +189,7 @@ def load_predictions(player_id, target):
 
 
 def evaluate_bets(bets):
-    calculate_roi_with_unit_size(bets)
+    #calculate_roi_with_unit_size(bets)
     calculate_roi_with_kelly(bets)
 
 
