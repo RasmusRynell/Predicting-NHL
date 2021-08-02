@@ -27,41 +27,106 @@ def generate_data_for(player_id, nhl_session, games_to_go_back, season):
                                 + [u + "_PlayerTeam" for u in PlayerTeamStats.__table__.columns.keys()] \
                                 + [u + "_OppTeam" for u in OppTeamStats.__table__.columns.keys()]
 
-    # df_total = pd.DataFrame()
-    # if season == "all":
-    #     for i in tqdm(range(2008, 2025)):
-    #         season = str(i) + str(i+1)
-    #         new_df = add_games_back(playerStatsForGames[playerStatsForGames.season_Game == str(season)], games_to_go_back)
-    #         df_total = pd.concat([df_total, new_df])
 
-    # else:
-    #     df_total = add_games_back(playerStatsForGames[playerStatsForGames.season_Game == str(season)], games_to_go_back)
-
-    playerStatsForGames["O_1.5"] = (playerStatsForGames["shots_Skater"] > 1.5).astype(int)
-    playerStatsForGames["O_2.5"] = (playerStatsForGames["shots_Skater"] > 2.5).astype(int)
-    playerStatsForGames["O_3.5"] = (playerStatsForGames["shots_Skater"] > 3.5).astype(int)
-    playerStatsForGames["O_4.5"] = (playerStatsForGames["shots_Skater"] > 4.5).astype(int)
+    playerStatsForGames["ans_O_1.5"] = (playerStatsForGames["shots_Skater"] > 1.5).astype(int)
+    playerStatsForGames["ans_O_2.5"] = (playerStatsForGames["shots_Skater"] > 2.5).astype(int)
+    playerStatsForGames["ans_O_3.5"] = (playerStatsForGames["shots_Skater"] > 3.5).astype(int)
+    playerStatsForGames["ans_O_4.5"] = (playerStatsForGames["shots_Skater"] > 4.5).astype(int)
 
     df = clean_data(playerStatsForGames)
-    df = generate_prediction_data(df)
+    df = generate_prediction_data(df, nhl_session)
 
     # One hot encode the categorical variables
     df = pd.get_dummies(df, columns=one_hot_cols)
 
     return df
 
-def add_games_back(df, games_to_go_back):
-    df_total = pd.DataFrame()
-    for i in range(1, games_to_go_back + 1):
-        dfc = df.copy()
-        dfc = dfc.shift(periods=i)
-        dfc.columns = [u + "_{}_games_back".format(i) for u in dfc.head()]
-        df_total = pd.concat([df_total, dfc], axis=1)
-    df = pd.concat([df, df_total], axis=1)
-    return df
+
+def replace_team_data(df, nhl_session):
+    df.drop(forbidden_stats_PlayerTeam, axis=1, inplace=True)
+    df.drop(forbidden_stats_OppTeam, axis=1, inplace=True)
+
+    # Create empty df to fill
+    final_df = pd.DataFrame()
+
+    # Loop trough each game
+    for i, row in df.iterrows():
+        playerTeamId = row['teamId_PlayerTeam']
+        oppTeamId = row['teamId_OppTeam']
+        gamePk = row['gamePk']
+        season = row['season']
+
+        # Get the team stats for this game
+        query = (
+            select(Game, TeamStats)
+            .where(and_(TeamStats.teamId == playerTeamId, Game.season == season))
+            .join(Game, TeamStats.gamePk == Game.gamePk)
+            .order_by(asc(Game.gameDate))
+        )
+        playerTeamStats = pd.read_sql(query, nhl_session.bind)
+        playerTeamStats.columns = [u + "_Game" for u in Game.__table__.columns.keys()] \
+                                + [u + "_PlayerTeam" for u in TeamStats.__table__.columns.keys()]
+
+        # Remove unwanted columns
+        playerTeamStats = clean_data(playerTeamStats, 'ignore')
+
+        # Get the team stats for this game
+        query = (
+            select(Game, TeamStats)
+            .where(and_(TeamStats.teamId == oppTeamId, Game.season == season))
+            .join(Game, TeamStats.gamePk == Game.gamePk)
+            .order_by(asc(Game.gameDate))
+        )
+        oppTeamStats = pd.read_sql(query, nhl_session.bind)
+        oppTeamStats.columns = [u + "_Game" for u in Game.__table__.columns.keys()] \
+                                + [u + "_OppTeam" for u in TeamStats.__table__.columns.keys()]
+
+        # Remove unwanted columns
+        oppTeamStats = clean_data(oppTeamStats, 'ignore')
 
 
-def generate_prediction_data(df):
+        for stat in forbidden_stats_PlayerTeam:
+            playerTeamStats[f'{stat}_ema_1_game_back'] = playerTeamStats[stat].ewm(span=1, min_periods=1).mean().shift(1)
+            playerTeamStats[f'{stat}_ema_3_game_back'] = playerTeamStats[stat].ewm(span=3, min_periods=1).mean().shift(1)
+            playerTeamStats[f'{stat}_ema_10_game_back'] = playerTeamStats[stat].ewm(span=10, min_periods=1).mean().shift(1)
+            playerTeamStats[f'{stat}_ema_1_season_back'] = playerTeamStats[stat].ewm(span=10000, min_periods=1).mean().shift(1)
+
+        for stat in forbidden_stats_OppTeam:
+            oppTeamStats[f'{stat}_ema_1_game_back'] = oppTeamStats[stat].ewm(span=1, min_periods=1).mean().shift(1)
+            oppTeamStats[f'{stat}_ema_3_game_back'] = oppTeamStats[stat].ewm(span=3, min_periods=1).mean().shift(1)
+            oppTeamStats[f'{stat}_ema_10_game_back'] = oppTeamStats[stat].ewm(span=10, min_periods=1).mean().shift(1)
+            oppTeamStats[f'{stat}_ema_1_season_back'] = oppTeamStats[stat].ewm(span=10000, min_periods=1).mean().shift(1)
+
+
+        # Remove forbidden_stats from df
+        playerTeamStats = playerTeamStats.drop(forbidden_stats_PlayerTeam, axis=1)
+        oppTeamStats = oppTeamStats.drop(forbidden_stats_OppTeam, axis=1)
+
+        # Get the current games team stats
+        current_game_org_stats = df[df.gamePk == gamePk].reset_index()
+        current_game_team_stats = playerTeamStats[playerTeamStats.gamePk == gamePk].reset_index()
+        current_game_opp_stats = oppTeamStats[oppTeamStats.gamePk == gamePk].reset_index()
+
+        result = pd.concat([current_game_org_stats, current_game_team_stats], axis=1, join='inner')
+        result = pd.concat([result, current_game_opp_stats], axis=1, join='inner')
+
+        # Remove all duplicate columns in result
+        result = result.loc[:,~result.columns.duplicated()]
+
+        # Save to final df
+        final_df = pd.concat([final_df, result], axis=0, ignore_index=True)
+
+    return final_df
+
+
+
+
+
+
+def generate_prediction_data(df, nhl_session):
+    # Remove unwanted team data and replace it with reasonable values
+    df = replace_team_data(df, nhl_session)
+
     # Group the data by season
     df_grouped = df.groupby(['season'])
 
@@ -70,48 +135,48 @@ def generate_prediction_data(df):
 
     # loop through the seasons
     for season, season_df in df_grouped:
-        for stat in forbidden_stats:
+        for stat in forbidden_stats_Skater:
             # Calculate the EMA for each season
-            season_df[f'{stat}_ema_1_games_back'] = season_df[stat].ewm(span=1, min_periods=1).mean().shift(1).copy()#.fillna(0)
-            season_df[f'{stat}_ema_3_season_back'] = season_df[stat].ewm(span=3, min_periods=1).mean().shift(1).copy()#.fillna(0)
-            season_df[f'{stat}_ema_10_season_back'] = season_df[stat].ewm(span=10, min_periods=1).mean().shift(1).copy()#.fillna(0)
-            season_df[f'{stat}_ema_1_season_back'] = season_df[stat].ewm(span=10000, min_periods=1).mean().shift(1).copy()#.fillna(0)
+            season_df[f'{stat}_ema_1_games_back'] = season_df[stat].ewm(span=1, min_periods=1).mean().shift(1).copy()
+            season_df[f'{stat}_ema_3_season_back'] = season_df[stat].ewm(span=3, min_periods=1).mean().shift(1).copy()
+            season_df[f'{stat}_ema_10_season_back'] = season_df[stat].ewm(span=10, min_periods=1).mean().shift(1).copy()
+            season_df[f'{stat}_ema_1_season_back'] = season_df[stat].ewm(span=10000, min_periods=1).mean().shift(1).copy()
 
         # Save data to the final df
         final_df = pd.concat([final_df, season_df])
-        
-    for stat in forbidden_stats:
-        final_df[f'{stat}_ema_carrier'] = final_df[stat].ewm(span=100000, min_periods=1).mean().shift(1)#.fillna(0)
 
     # Remove forbidden_stats from df
-    final_df = final_df.drop(forbidden_stats, axis=1)
+    final_df = final_df.drop(forbidden_stats_Skater, axis=1)
 
     return final_df
 
 
-def clean_data(df):
+def clean_data(df, errors='raise'):
 
     # Drop the unnecessary columns
-    df.drop(remove_cols, axis=1, inplace=True)
+    df.drop(remove_cols, axis=1, inplace=True, errors=errors)
 
     # Rename columns
-    df.rename(columns=rename_cols, inplace=True)
+    df.rename(columns=rename_cols, inplace=True, errors=errors)
 
     # In each column of "fill_with_zeros" where there is not a number, put a zero
     for col in fill_with_zeros:
-        df[col].replace(r'^\s*$', 0, regex=True, inplace=True)
+        if col in df.columns:
+            df[col].replace(r'^\s*$', 0, regex=True, inplace=True)
 
     # Convert timestamps to datetime objects
     for col in time_to_sec:
-        df[col] = pd.to_timedelta(df[col].astype(str)).dt.total_seconds().astype(int)
+        if col in df.columns:
+            df[col] = pd.to_timedelta(df[col].astype(str)).dt.total_seconds().astype(int)
 
     return df
 
 
 remove_cols = [
    "added_Skater",
+   "team_Skater",
    "updated_Skater",
-   "gamePk_Game",
+   "gamePk_Skater",
    "abstractGameState_Game",
    "detailedState_Game",
    "statusCode_Game",
@@ -122,7 +187,6 @@ remove_cols = [
    "updated_Game",
 
    "gamePk_PlayerTeam",
-   "teamId_PlayerTeam",
    "leagueRecordType_PlayerTeam",
    "added_PlayerTeam",
    "updated_PlayerTeam",
@@ -136,7 +200,7 @@ remove_cols = [
 
 rename_cols = {
    "playerId_Skater": "playerId",
-   "gamePk_Skater": "gamePk",
+   "gamePk_Game": "gamePk",
    "gameDate_Game": "date",
    "codedGameState_Game": "gameState",
    "isHome_PlayerTeam": "isHome",
@@ -161,7 +225,7 @@ time_to_sec = [
     "shortHandedTimeOnIce_Skater"
 ]
 
-forbidden_stats = [
+forbidden_stats_Skater = [
     "timeOnIce_Skater",
     "assists_Skater",
     "goals_Skater",
@@ -180,7 +244,10 @@ forbidden_stats = [
     "plusMinus_Skater",
     "evenTimeOnIce_Skater",
     "powerPlayTimeOnIce_Skater",
-    "shortHandedTimeOnIce_Skater",
+    "shortHandedTimeOnIce_Skater"
+]
+
+forbidden_stats_PlayerTeam = [
     "goals_PlayerTeam",
     "pim_PlayerTeam",
     "shots_PlayerTeam",
@@ -206,7 +273,10 @@ forbidden_stats = [
     "wins_PlayerTeam",
     "losses_PlayerTeam",
     "ot_PlayerTeam",
-    "score_PlayerTeam",
+    "score_PlayerTeam"
+]
+
+forbidden_stats_OppTeam = [
     "goals_OppTeam",
     "pim_OppTeam",
     "shots_OppTeam",
