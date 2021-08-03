@@ -20,7 +20,7 @@ import csv
 # Global db's
 # Create engines
 engine_bets = create_engine('sqlite:///external/databases/bets.db', echo=False, future=False)
-engine_nhl = create_engine('sqlite:///external/databases/testing.db', echo=False, future=False)
+engine_nhl = create_engine('sqlite:///external/databases/nhl.db', echo=False, future=False)
 
 # Bind tables
 Base_bets.metadata.create_all(bind=engine_bets)
