@@ -56,57 +56,16 @@ def replace_team_data(df, nhl_session):
         gamePk = row['gamePk']
         season = row['season']
 
-        # Get the team stats for this game
-        query = (
-            select(Game, TeamStats)
-            .where(and_(TeamStats.teamId == playerTeamId, Game.season == season))
-            .join(Game, TeamStats.gamePk == Game.gamePk)
-            .order_by(asc(Game.gameDate))
-        )
-        playerTeamStats = pd.read_sql(query, nhl_session.bind)
-        playerTeamStats.columns = [u + "_Game" for u in Game.__table__.columns.keys()] \
-                                + [u + "_PlayerTeam" for u in TeamStats.__table__.columns.keys()]
-
-        # Remove unwanted columns
-        playerTeamStats = clean_data(playerTeamStats, 'ignore')
-
-        # Get the team stats for this game
-        query = (
-            select(Game, TeamStats)
-            .where(and_(TeamStats.teamId == oppTeamId, Game.season == season))
-            .join(Game, TeamStats.gamePk == Game.gamePk)
-            .order_by(asc(Game.gameDate))
-        )
-        oppTeamStats = pd.read_sql(query, nhl_session.bind)
-        oppTeamStats.columns = [u + "_Game" for u in Game.__table__.columns.keys()] \
-                                + [u + "_OppTeam" for u in TeamStats.__table__.columns.keys()]
-
-        # Remove unwanted columns
-        oppTeamStats = clean_data(oppTeamStats, 'ignore')
-
-
-        for stat in forbidden_stats_PlayerTeam:
-            playerTeamStats[f'{stat}_ema_1_game_back'] = playerTeamStats[stat].ewm(span=1, min_periods=1).mean().shift(1)
-            playerTeamStats[f'{stat}_ema_3_game_back'] = playerTeamStats[stat].ewm(span=3, min_periods=1).mean().shift(1)
-            playerTeamStats[f'{stat}_ema_10_game_back'] = playerTeamStats[stat].ewm(span=10, min_periods=1).mean().shift(1)
-            playerTeamStats[f'{stat}_ema_1_season_back'] = playerTeamStats[stat].ewm(span=10000, min_periods=1).mean().shift(1)
-
-        for stat in forbidden_stats_OppTeam:
-            oppTeamStats[f'{stat}_ema_1_game_back'] = oppTeamStats[stat].ewm(span=1, min_periods=1).mean().shift(1)
-            oppTeamStats[f'{stat}_ema_3_game_back'] = oppTeamStats[stat].ewm(span=3, min_periods=1).mean().shift(1)
-            oppTeamStats[f'{stat}_ema_10_game_back'] = oppTeamStats[stat].ewm(span=10, min_periods=1).mean().shift(1)
-            oppTeamStats[f'{stat}_ema_1_season_back'] = oppTeamStats[stat].ewm(span=10000, min_periods=1).mean().shift(1)
-
-
-        # Remove forbidden_stats from df
-        playerTeamStats = playerTeamStats.drop(forbidden_stats_PlayerTeam, axis=1)
-        oppTeamStats = oppTeamStats.drop(forbidden_stats_OppTeam, axis=1)
+        # Get the team stats for the player and the opponent
+        playerTeamStats = get_team_stats(playerTeamId, season, nhl_session, "PlayerTeam")
+        oppTeamStats = get_team_stats(oppTeamId, season, nhl_session, "OppTeam")
 
         # Get the current games team stats
         current_game_org_stats = df[df.gamePk == gamePk].reset_index()
         current_game_team_stats = playerTeamStats[playerTeamStats.gamePk == gamePk].reset_index()
         current_game_opp_stats = oppTeamStats[oppTeamStats.gamePk == gamePk].reset_index()
 
+        # Construct the new row
         result = pd.concat([current_game_org_stats, current_game_team_stats], axis=1, join='inner')
         result = pd.concat([result, current_game_opp_stats], axis=1, join='inner')
 
@@ -119,8 +78,33 @@ def replace_team_data(df, nhl_session):
     return final_df
 
 
+def get_team_stats(teamId, season, nhl_session, suffix):
+    # Get the team stats for this game
+    query = (
+        select(Game, TeamStats)
+        .where(and_(TeamStats.teamId == teamId, Game.season == season))
+        .join(Game, TeamStats.gamePk == Game.gamePk)
+        .order_by(asc(Game.gameDate))
+    )
+    teamStats = pd.read_sql(query, nhl_session.bind)
+    teamStats.columns = [u + "_Game" for u in Game.__table__.columns.keys()] \
+                      + [u + "_" + suffix for u in TeamStats.__table__.columns.keys()]
 
+    # Remove unwanted columns
+    teamStats = clean_data(teamStats, 'ignore')
 
+    forbidden_stats = forbidden_stats_PlayerTeam if suffix == "PlayerTeam" else forbidden_stats_OppTeam
+
+    # Create new columns for the team stats
+    for stat in forbidden_stats:
+        teamStats[f'{stat}_ema_1_game_back'] = teamStats[stat].ewm(span=1, min_periods=1).mean().shift(1).copy()
+        teamStats[f'{stat}_ema_3_game_back'] = teamStats[stat].ewm(span=3, min_periods=1).mean().shift(1).copy()
+        teamStats[f'{stat}_ema_10_game_back'] = teamStats[stat].ewm(span=10, min_periods=1).mean().shift(1).copy()
+        teamStats[f'{stat}_ema_1_season_back'] = teamStats[stat].ewm(span=10000, min_periods=1).mean().shift(1).copy()
+
+    teamStats = teamStats.drop(forbidden_stats, axis=1)
+
+    return teamStats
 
 
 def generate_prediction_data(df, nhl_session):
