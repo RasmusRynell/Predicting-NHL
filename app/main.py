@@ -63,14 +63,14 @@ if __name__ == "__main__":
         elif arg_in.lower() == 'pred':
             bets = get_bets()
 
-            # # Remove all but last 5 bets in dict
-            # keys = list(bets.keys())
-            # new_bets = {}
-            # for i in range(10, 15):
-            #     new_bets[keys[i]] = bets[keys[i]]
+            # Remove all but last 5 bets in dict
+            keys = list(bets.keys())
+            new_bets = {}
+            for i in range(10, 15):
+                new_bets[keys[i]] = bets[keys[i]]
 
 
-            predictions = predict_games(bets)
+            predictions = predict_games(new_bets)
 
             print("Predictions saved to file")
             print("Predictions: ")

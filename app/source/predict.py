@@ -42,7 +42,7 @@ def predict_game(data, game_ids, target, player_id):
 
 
 def create_split(data, game_ids, target, player_id):
-   target = "O_" + str(target)
+   target = "ans_O_" + str(target)
 
    # Check so that we have enough data to split
    if len(data) < 100:
@@ -71,7 +71,7 @@ def create_split(data, game_ids, target, player_id):
    data.dropna(inplace=True)
 
    # Drop targets not targetting
-   default_targets = ["O_1.5", "O_2.5", "O_3.5", "O_4.5"]
+   default_targets = ["ans_O_1.5", "ans_O_2.5", "ans_O_3.5", "ans_O_4.5"]
    default_targets.remove(target)
    data.drop(columns=default_targets, axis=1, inplace=True)
 

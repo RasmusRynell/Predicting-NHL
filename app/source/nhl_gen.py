@@ -7,6 +7,7 @@ import sqlalchemy
 from sqlalchemy import select
 from sqlalchemy.orm import aliased
 from tqdm import tqdm
+from source.nhl_handler import *
 import csv
 
 def generate_data_for(player_id, nhl_session, games_to_go_back, season):
