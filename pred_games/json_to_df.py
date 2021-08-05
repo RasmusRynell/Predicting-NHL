@@ -36,8 +36,5 @@ for season in tqdm(json_file['league']['seasons']):
         # Add df_game as new row in df with all columns
         df = df.append(df_game, ignore_index=True)
 
-# Reverse rows
-df = df.iloc[::-1]
-
 # Save df to csv
 df.to_csv('./stats/NHL_odds_and_results.csv', index=False, sep=';')
