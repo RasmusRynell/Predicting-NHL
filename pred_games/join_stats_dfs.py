@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import json
 import re
 
 df_all_str = pd.read_csv('./stats/2021-all_str.csv')
@@ -41,12 +42,20 @@ df = pd.concat([df_all_str, df_all_str_rates, df_5v5, df_5v5_rates], axis=1)
 
 # Split "Game" into "Date" and teams
 df['Date'] = df.index.str.split(' - ').str[0]
-df['AwayTeam'] = df.index.str.split(' - ').str[1].str.split(', ').str[0]
 df['HomeTeam'] = df.index.str.split(' - ').str[1].str.split(', ').str[1]
+df['AwayTeam'] = df.index.str.split(' - ').str[1].str.split(', ').str[0]
 
 # Remove everything only after last " " in 'AwayTeam'
-df['AwayTeam'] = df['AwayTeam'].str.replace(r'\s\d$', '', regex=True)
 df['HomeTeam'] = df['HomeTeam'].str.replace(r'\s\d$', '', regex=True)
+df['AwayTeam'] = df['AwayTeam'].str.replace(r'\s\d$', '', regex=True)
+
+# Read names from config json file
+with open('./configs/team_names.json') as json_data:
+    team_names = json.load(json_data)
+
+df['HomeTeam'] = df.apply(lambda x: team_names[x.HomeTeam.lower()], axis=1)
+df['AwayTeam'] = df.apply(lambda x: team_names[x.AwayTeam.lower()], axis=1)
+
 
 # If the value in 'Team' contains the value in 'HomeTeam'
 df['IsHome'] = df.apply(lambda x: x.HomeTeam in x.Team, axis=1).astype(int)
