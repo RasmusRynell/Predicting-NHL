@@ -57,4 +57,4 @@ df = df.apply(lambda x: x.replace(to_replace='-', value=0.0), axis=1)
 
 
 # Save to csv
-df.to_csv('./stats/2021-done.csv', sep=';')
+df.to_csv('./stats/2021-done.csv', sep=';', index=False)
