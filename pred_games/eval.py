@@ -11,6 +11,7 @@ from keras.utils import np_utils
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 from sklearn.pipeline import Pipeline
 from sklearn import metrics
+from sklearn.feature_selection import RFE
 
 import models as models
 import helper as helper
@@ -67,7 +68,6 @@ model.fit(X_train, y_train, epochs=200, batch_size=X_test.shape[1], validation_d
 
 
 
-
 ### Evaluate model
 # Generate predictions for the test data
 pred_ = model.predict(X_test)
@@ -76,23 +76,22 @@ pred = np.argmax(pred_, axis=1)
 # Print score
 y_compare = np.argmax(y_test.values,axis=1) 
 score = metrics.accuracy_score(y_compare, pred)
-print("Accuracy on test data: {}".format(score))
-print(f'ROC AUC: {metrics.roc_auc_score(y_compare, pred_, multi_class="ovr", average="weighted")}')
+print("\nAccuracy on test data: {}".format(score))
+print(f'ROC AUC on test data: {metrics.roc_auc_score(y_compare, pred_, multi_class="ovr", average="weighted")}')
 
 # Print confusion matrix
 cm = metrics.confusion_matrix(y_compare, pred)
 np.set_printoptions(precision=2)
-print('Confusion matrix, without normalization')
+print('\nConfusion matrix, without normalization')
 print(cm)
 plt.figure()
 helper.plot_confusion_matrix(cm, y_test.columns.to_list())
 
 # Normalize the confusion matrix by row (i.e by the number of samples in each class)
 cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-print('Normalized confusion matrix')
+print('\nNormalized confusion matrix')
 print(cm_normalized)
 plt.figure()
-helper.plot_confusion_matrix(cm_normalized, y_test.columns.to_list(), 
-        title='Normalized confusion matrix')
+helper.plot_confusion_matrix(cm_normalized, y_test.columns.to_list(), title='Normalized confusion matrix')
 
 plt.show()
