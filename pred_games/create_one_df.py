@@ -20,7 +20,7 @@ def add_odds(season):
 
 
     # save df
-    df.to_csv(f'./stats/{season}_done.csv', sep=';', index=False)
+    df.to_csv(f'./stats/seasons/{season}/{season}_done.csv', sep=';', index=False)
 
 
 
