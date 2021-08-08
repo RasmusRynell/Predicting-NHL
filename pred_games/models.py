@@ -1,14 +1,53 @@
 from keras.models import Sequential
 from keras.layers import Dense, Dropout, LSTM
+from keras import backend as K
 
 
-def baseline_model(input_dim, output_dim):
+def get_model(input_dim, output_dim):
     # create model
     model = Sequential()
     model.add(Dense(500, input_dim=input_dim, activation='relu'))
     model.add(Dense(250, activation='relu'))
     model.add(Dense(124, activation='relu'))
     model.add(Dense(output_dim, activation='softmax'))
-    # Compile model
-    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy', 'AUC'])
+    model.compile(loss=odds_loss, optimizer='adam', metrics=['accuracy'])
     return model
+
+
+def odds_loss(y_true, y_pred):
+    """
+    The function implements the custom loss function
+    
+    Inputs
+    true : a vector of dimension batch_size, 7. A label encoded version of the output and the backp1_a and backp1_b
+    pred : a vector of probabilities of dimension batch_size , 5.
+    
+    Returns 
+    the loss value
+    """
+    win_home = y_true[:, 0:1]
+    win_away = y_true[:, 1:2]
+    draw = y_true[:, 2:3]
+    no_bet = y_true[:, 3:4]
+    home_odds = y_true[:, 4:5]
+    away_odds = y_true[:, 5:6]
+    draw_odds = y_true[:, 6:7]
+
+    # Hemma vinner:
+    # (1 * (2.2 - 1)) + ((1 - 1) * -1)
+    # 1.1 + 0 = 1.1
+    # 
+    # Hemma förlorar:
+    # 0 + -1 = -1
+    #
+    # Draw vinner:
+    # (1 * (1/1-1/2.2 - 1/
+
+
+    gain_loss_vector = K.concatenate([
+        win_home * (home_odds - 1) + (1 - win_home) * -1,
+        win_away * (away_odds - 1) + (1 - win_away) * -1,
+        draw * (draw_odds - 1) + (1 - draw) * -1,
+        no_bet
+      ], axis=1)
+    return -1 * K.mean(K.sum(gain_loss_vector * y_pred, axis=1))
