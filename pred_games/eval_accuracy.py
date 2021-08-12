@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
+from sklearn.utils import class_weight
 from sklearn.model_selection import train_test_split, cross_val_score, KFold
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from keras.wrappers.scikit_learn import KerasClassifier
@@ -48,32 +49,11 @@ test_data.to_csv('./stats/test_data.csv', sep=';', index=False)
 
 # construct train test X and y
 X_train = train_data.drop(columns=['Result'])
-y_train_ = pd.get_dummies(train_data['Result'])
-
-y_train = pd.DataFrame(columns=['HOME', 'AWAY', 'DRAW', 'NO_BET', 'ODDS_HOME', 'ODDS_AWAY', 'ODDS_DRAW'])
-y_train['HOME'] = (y_train_['HOME']).astype(float)
-y_train['AWAY'] = (y_train_['AWAY']).astype(float)
-y_train['DRAW'] = (y_train_['DRAW']).astype(float)
-y_train["NO_BET"] = float(-1)
-y_train["ODDS_HOME"] = (X_train['OddsHome']).astype(float)
-y_train["ODDS_AWAY"] = (X_train['OddsAway']).astype(float)
-y_train["ODDS_DRAW"] = (X_train['OddsDraw']).astype(float)
-y_train = y_train.values
-
+y_train = pd.get_dummies(train_data['Result'])
 
 
 X_test = test_data.drop(columns=['Result'])
-y_test_ = pd.get_dummies(test_data['Result'])
-
-y_test = pd.DataFrame(columns=['HOME', 'AWAY', 'DRAW', 'NO_BET', 'ODDS_HOME', 'ODDS_AWAY', 'ODDS_DRAW'])
-y_test['HOME'] = (y_test_['HOME']).astype(float)
-y_test['AWAY'] = (y_test_['AWAY']).astype(float)
-y_test['DRAW'] = (y_test_['DRAW']).astype(float)
-y_test["NO_BET"] = float(-1)
-y_test["ODDS_HOME"] = (X_test['OddsHome']).astype(float)
-y_test["ODDS_AWAY"] = (X_test['OddsAway']).astype(float)
-y_test["ODDS_DRAW"] = (X_test['OddsDraw']).astype(float)
-y_test = y_test.values
+y_test = pd.get_dummies(test_data['Result'])
 
 
 ### Preprocess here in order to not leak data in scalaing
@@ -82,16 +62,47 @@ X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
 
+# Calculate the class weights
+relative = y_train["HOME"].sum()
+class_weight = {
+    0: relative / y_train['AWAY'].sum(),
+    1: relative / y_train["DRAW"].sum(),
+    2: relative / y_train["HOME"].sum()
+}
 
-model = models.get_model_odds_loss(X_test.shape[1], y_test.shape[1]-3)
-history = model.fit(X_train, y_train, validation_data=(X_test, y_test),
-          epochs=10, batch_size=8, callbacks=[EarlyStopping(patience=25),ModelCheckpoint('odds_loss.hdf5',save_best_only=True)])
+### Create and fit model
+model = models.get_model_acc(X_test.shape[1], len(y_test.columns.to_list()))
 
-print(f'Training Loss :{model.evaluate(X_train, y_train)}\nValidation Loss :{model.evaluate(X_test, y_test)}')
+# Early stopping callback
+early_stopping = EarlyStopping(monitor='val_loss', min_delta=1e-5, patience=5, verbose=1, mode='auto', restore_best_weights=True)
+model.fit(X_train, y_train, epochs=200, batch_size=8, validation_data=(X_test, y_test), verbose=2, callbacks=[early_stopping], class_weight=class_weight)
+# X_test.shape[1]
 
+
+### Evaluate model
+# Generate predictions for the test data
 pred_ = model.predict(X_test)
 pred = np.argmax(pred_, axis=1)
 
-# Save pred to csv
-df_pred = pd.DataFrame(columns=['HOME', 'AWAY', 'DRAW', 'NO_BET'], data=pred_)
-df_pred.to_csv('./stats/pred.csv', sep=';', index=False)
+# Print score
+y_compare = np.argmax(y_test.values,axis=1) 
+score = metrics.accuracy_score(y_compare, pred)
+print("\nAccuracy on test data: {}".format(score))
+print(f'ROC AUC on test data: {metrics.roc_auc_score(y_compare, pred_, multi_class="ovr", average="weighted")}')
+
+# Print confusion matrix
+cm = metrics.confusion_matrix(y_compare, pred)
+np.set_printoptions(precision=2)
+print('\nConfusion matrix, without normalization')
+print(cm)
+plt.figure()
+helper.plot_confusion_matrix(cm, y_test.columns.to_list())
+
+# Normalize the confusion matrix by row (i.e by the number of samples in each class)
+cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+print('\nNormalized confusion matrix')
+print(cm_normalized)
+plt.figure()
+helper.plot_confusion_matrix(cm_normalized, y_test.columns.to_list(), title='Normalized confusion matrix')
+
+plt.show()
