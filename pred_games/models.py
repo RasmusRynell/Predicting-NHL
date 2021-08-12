@@ -3,24 +3,15 @@ from keras.layers import Dense, Dropout, LSTM
 from keras import backend as K
 
 
-def get_model_acc(input_dim, output_dim):
+def get_model(input_dim, output_dim, loss):
     # create model
     model = Sequential()
-    model.add(Dense(500, input_dim=input_dim, activation='relu'))
-    model.add(Dense(250, activation='relu'))
-    model.add(Dense(124, activation='relu'))
+    model.add(Dense(32, input_dim=input_dim, activation='relu'))
+    model.add(Dropout(0.4))
+    model.add(Dense(16, activation='relu'))
+    model.add(Dropout(0.4))
     model.add(Dense(output_dim, activation='softmax'))
-    model.compile(loss="categorical_crossentropy", optimizer='adam', metrics=['accuracy'])
-    return model
-
-def get_model_odds_loss(input_dim, output_dim):
-    # create model
-    model = Sequential()
-    model.add(Dense(500, input_dim=input_dim, activation='relu'))
-    model.add(Dense(250, activation='relu'))
-    model.add(Dense(124, activation='relu'))
-    model.add(Dense(output_dim, activation='softmax'))
-    model.compile(loss=odds_loss, optimizer='adam', metrics=['accuracy'])
+    model.compile(loss=loss, optimizer='adam', metrics=['accuracy'])
     return model
 
 

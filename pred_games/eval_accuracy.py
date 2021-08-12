@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from sklearn.utils import class_weight
+from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split, cross_val_score, KFold
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from keras.wrappers.scikit_learn import KerasClassifier
@@ -31,7 +32,7 @@ for i in range(2010, 2021):
 df = pd.concat(dfs)
 
 df.drop(columns=['GameUrl','HomeScoreAfterOtAndSo', 'AwayScoreAfterOtAndSo', 'Date', 'HomeTeam', 'AwayTeam'], inplace=True)
-# , 'OddsHome', 'OddsDraw', 'OddsAway'
+#df.drop(columns=df.columns.difference(['OddsHome', 'OddsDraw', 'OddsAway', 'Result']), inplace=True)
 
 # Add new column if row contains any NAN values
 df['Contains_NANs'] = df.isnull().any(axis=1).astype(int)
@@ -61,6 +62,11 @@ scaler = MinMaxScaler()
 X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
+### PCA
+pca = PCA(n_components=250)
+X_train = pca.fit_transform(X_train)
+X_test = pca.transform(X_test)
+
 
 # Calculate the class weights
 relative = y_train["HOME"].sum()
@@ -71,12 +77,11 @@ class_weight = {
 }
 
 ### Create and fit model
-model = models.get_model_acc(X_test.shape[1], len(y_test.columns.to_list()))
+model = models.get_model(X_test.shape[1], len(y_test.columns.to_list()), "categorical_crossentropy")
 
 # Early stopping callback
 early_stopping = EarlyStopping(monitor='val_loss', min_delta=1e-5, patience=5, verbose=1, mode='auto', restore_best_weights=True)
-model.fit(X_train, y_train, epochs=200, batch_size=8, validation_data=(X_test, y_test), verbose=2, callbacks=[early_stopping], class_weight=class_weight)
-# X_test.shape[1]
+history = model.fit(X_train, y_train, epochs=50, batch_size=32, validation_data=(X_test, y_test), verbose=2, class_weight=class_weight, shuffle=True) # callbacks=[early_stopping])
 
 
 ### Evaluate model
@@ -105,4 +110,27 @@ print(cm_normalized)
 plt.figure()
 helper.plot_confusion_matrix(cm_normalized, y_test.columns.to_list(), title='Normalized confusion matrix')
 
+#plot the training and validation accuracy and loss at each epoch
+plt.figure()
+loss = history.history['loss']
+val_loss = history.history['val_loss']
+epochs = range(1, len(loss) + 1)
+plt.plot(epochs, loss, 'y', label='Training loss')
+plt.plot(epochs, val_loss, 'r', label='Validation loss')
+plt.title('Training and validation loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+
+plt.figure()
+acc = history.history['accuracy']
+val_acc = history.history['val_accuracy']
+plt.plot(epochs, acc, 'y', label='Training acc')
+plt.plot(epochs, val_acc, 'r', label='Validation acc')
+plt.title('Training and validation accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+
 plt.show()
+
