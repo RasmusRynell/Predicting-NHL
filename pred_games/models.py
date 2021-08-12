@@ -33,17 +33,6 @@ def odds_loss(y_true, y_pred):
     away_odds = y_true[:, 5:6]
     draw_odds = y_true[:, 6:7]
 
-    # Hemma vinner:
-    # (1 * (2.2 - 1)) + ((1 - 1) * -1)
-    # 1.1 + 0 = 1.1
-    # 
-    # Hemma förlorar:
-    # 0 + -1 = -1
-    #
-    # Draw vinner:
-    # (1 * (1/1-1/2.2 - 1/
-
-
     gain_loss_vector = K.concatenate([
         win_home * (home_odds - 1) + (1 - win_home) * -1,
         win_away * (away_odds - 1) + (1 - win_away) * -1,
