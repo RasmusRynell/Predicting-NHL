@@ -86,17 +86,6 @@ pca = PCA(n_components=250)
 X_train = pca.fit_transform(X_train)
 X_test = pca.transform(X_test)
 
-relative = y_train["HOME"].sum()
-class_weight = {
-    0: relative / y_train['AWAY'].sum(),
-    1: relative / y_train["DRAW"].sum(),
-    2: relative / y_train["HOME"].sum(),
-    3: 1,
-    4: 1,
-    5: 1
-}
-
-
 
 model = models.get_model(X_test.shape[1], y_test.shape[1]-3, models.odds_loss)
 history = model.fit(X_train, y_train, validation_data=(X_test, y_test),
@@ -109,5 +98,7 @@ pred = np.argmax(pred_, axis=1)
 
 # Save pred to csv
 df_pred = pd.DataFrame(columns=['HOME', 'AWAY', 'DRAW', 'NO_BET'], data=pred_)
+y_test.reset_index(inplace=True)
 svar = pd.concat([y_test, df_pred], axis=1)
+print(svar)
 svar.to_csv('./stats/pred.csv', sep=';', index=False)
