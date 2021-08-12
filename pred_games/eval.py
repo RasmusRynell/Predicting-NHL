@@ -4,6 +4,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
+from sklearn.utils import class_weight
+from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split, cross_val_score, KFold
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from keras.wrappers.scikit_learn import KerasClassifier
@@ -58,7 +60,6 @@ y_train["NO_BET"] = float(-1)
 y_train["ODDS_HOME"] = (X_train['OddsHome']).astype(float)
 y_train["ODDS_AWAY"] = (X_train['OddsAway']).astype(float)
 y_train["ODDS_DRAW"] = (X_train['OddsDraw']).astype(float)
-y_train = y_train.values
 
 
 
@@ -73,7 +74,6 @@ y_test["NO_BET"] = float(-1)
 y_test["ODDS_HOME"] = (X_test['OddsHome']).astype(float)
 y_test["ODDS_AWAY"] = (X_test['OddsAway']).astype(float)
 y_test["ODDS_DRAW"] = (X_test['OddsDraw']).astype(float)
-y_test = y_test.values
 
 
 ### Preprocess here in order to not leak data in scalaing
@@ -81,17 +81,33 @@ scaler = MinMaxScaler()
 X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
+### PCA
+pca = PCA(n_components=250)
+X_train = pca.fit_transform(X_train)
+X_test = pca.transform(X_test)
+
+relative = y_train["HOME"].sum()
+class_weight = {
+    0: relative / y_train['AWAY'].sum(),
+    1: relative / y_train["DRAW"].sum(),
+    2: relative / y_train["HOME"].sum(),
+    3: 1,
+    4: 1,
+    5: 1
+}
 
 
-model = models.get_model_odds_loss(X_test.shape[1], y_test.shape[1]-3)
+
+model = models.get_model(X_test.shape[1], y_test.shape[1]-3, models.odds_loss)
 history = model.fit(X_train, y_train, validation_data=(X_test, y_test),
-          epochs=10, batch_size=8, callbacks=[EarlyStopping(patience=25),ModelCheckpoint('odds_loss.hdf5',save_best_only=True)])
+          epochs=20, batch_size=32, callbacks=[EarlyStopping(patience=25),ModelCheckpoint('odds_loss.hdf5',save_best_only=True)], shuffle=True)
 
-print(f'Training Loss :{model.evaluate(X_train, y_train)}\nValidation Loss :{model.evaluate(X_test, y_test)}')
+print(f'Training Loss :{model.evaluate(X_train, y_train.values)}\nValidation Loss :{model.evaluate(X_test, y_test)}')
 
 pred_ = model.predict(X_test)
 pred = np.argmax(pred_, axis=1)
 
 # Save pred to csv
 df_pred = pd.DataFrame(columns=['HOME', 'AWAY', 'DRAW', 'NO_BET'], data=pred_)
-df_pred.to_csv('./stats/pred.csv', sep=';', index=False)
+svar = pd.concat([y_test, df_pred], axis=1)
+svar.to_csv('./stats/pred.csv', sep=';', index=False)
