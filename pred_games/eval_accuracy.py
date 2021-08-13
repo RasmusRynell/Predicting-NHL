@@ -7,7 +7,7 @@ import tensorflow as tf
 from sklearn.utils import class_weight
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split, cross_val_score, KFold
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau, TensorBoard
 from keras.wrappers.scikit_learn import KerasClassifier
 from keras.utils import np_utils
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
@@ -17,8 +17,7 @@ from sklearn.feature_selection import RFE
 from keras.layers import Dense, Dropout, LSTM, Embedding, Input, concatenate, Lambda, BatchNormalization
 from keras import Model
 from tqdm import tqdm
-
-
+import time
 
 tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=0.333, allow_growth=True)
 
@@ -63,7 +62,7 @@ X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
 ### PCA
-pca = PCA(n_components=250)
+pca = PCA(n_components=100)
 X_train = pca.fit_transform(X_train)
 X_test = pca.transform(X_test)
 
@@ -76,12 +75,16 @@ class_weight = {
     2: relative / y_train["HOME"].sum()
 }
 
+
 ### Create and fit model
-model = models.get_model(X_test.shape[1], len(y_test.columns.to_list()), "categorical_crossentropy")
+model, name_app = models.get_model(X_test.shape[1], len(y_test.columns.to_list()), "categorical_crossentropy")
+NAME = f"eval_acc_{int(time.time())}_{name_app}"
 
 # Early stopping callback
 early_stopping = EarlyStopping(monitor='val_loss', min_delta=1e-5, patience=5, verbose=1, mode='auto', restore_best_weights=True)
-history = model.fit(X_train, y_train, epochs=50, batch_size=32, validation_data=(X_test, y_test), verbose=2, class_weight=class_weight, shuffle=True) # callbacks=[early_stopping])
+tensorboard = TensorBoard(log_dir=f'./logs/{NAME}')
+history = model.fit(X_train, y_train, epochs=50, batch_size=16, validation_data=(X_test, y_test), \
+    verbose=2, class_weight=class_weight, shuffle=True, callbacks=[tensorboard]) # early_stopping
 
 
 ### Evaluate model
@@ -89,48 +92,28 @@ history = model.fit(X_train, y_train, epochs=50, batch_size=32, validation_data=
 pred_ = model.predict(X_test)
 pred = np.argmax(pred_, axis=1)
 
-# Print score
+### Print score
 y_compare = np.argmax(y_test.values,axis=1) 
 score = metrics.accuracy_score(y_compare, pred)
 print("\nAccuracy on test data: {}".format(score))
 print(f'ROC AUC on test data: {metrics.roc_auc_score(y_compare, pred_, multi_class="ovr", average="weighted")}')
 
-# Print confusion matrix
+### Print confusion matrix
 cm = metrics.confusion_matrix(y_compare, pred)
 np.set_printoptions(precision=2)
 print('\nConfusion matrix, without normalization')
 print(cm)
-plt.figure()
-helper.plot_confusion_matrix(cm, y_test.columns.to_list())
+# helper.plot_confusion_matrix(cm, y_test.columns.to_list())
 
-# Normalize the confusion matrix by row (i.e by the number of samples in each class)
+### Normalize the confusion matrix by row (i.e by the number of samples in each class)
 cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
 print('\nNormalized confusion matrix')
 print(cm_normalized)
-plt.figure()
-helper.plot_confusion_matrix(cm_normalized, y_test.columns.to_list(), title='Normalized confusion matrix')
+# helper.plot_confusion_matrix(cm_normalized, y_test.columns.to_list(), title='Normalized confusion matrix')
 
-#plot the training and validation accuracy and loss at each epoch
-plt.figure()
-loss = history.history['loss']
-val_loss = history.history['val_loss']
-epochs = range(1, len(loss) + 1)
-plt.plot(epochs, loss, 'y', label='Training loss')
-plt.plot(epochs, val_loss, 'r', label='Validation loss')
-plt.title('Training and validation loss')
-plt.xlabel('Epochs')
-plt.ylabel('Loss')
-plt.legend()
-
-plt.figure()
-acc = history.history['accuracy']
-val_acc = history.history['val_accuracy']
-plt.plot(epochs, acc, 'y', label='Training acc')
-plt.plot(epochs, val_acc, 'r', label='Validation acc')
-plt.title('Training and validation accuracy')
-plt.xlabel('Epochs')
-plt.ylabel('Accuracy')
-plt.legend()
+### Plot loss and accuracy curves
+# helper.plot_validation_loss(history)
+# helper.plot_validation_acc(history)
 
 plt.show()
 

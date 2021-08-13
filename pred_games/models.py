@@ -1,18 +1,19 @@
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, LSTM
+from keras.layers import Dense, Dropout
+from keras import regularizers
 from keras import backend as K
 
 
 def get_model(input_dim, output_dim, loss):
     # create model
     model = Sequential()
-    model.add(Dense(32, input_dim=input_dim, activation='relu'))
+    model.add(Dense(32, input_dim=input_dim, activation='relu', kernel_regularizer=regularizers.l2(0.0001)))
     model.add(Dropout(0.4))
-    model.add(Dense(16, activation='relu'))
+    model.add(Dense(16, activation='relu', kernel_regularizer=regularizers.l2(0.0001)))
     model.add(Dropout(0.4))
     model.add(Dense(output_dim, activation='softmax'))
     model.compile(loss=loss, optimizer='adam', metrics=['accuracy'])
-    return model
+    return model, "De32ReluL2=0.0001_" + "Dr=0.4_" + "De16ReluL2=0.0001_" + "Dr=0.4_" + "softmax, adam"
 
 
 def odds_loss(y_true, y_pred):
