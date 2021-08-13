@@ -56,7 +56,7 @@ y_train = pd.DataFrame(columns=['HOME', 'AWAY', 'DRAW', 'NO_BET', 'ODDS_HOME', '
 y_train['HOME'] = (y_train_['HOME']).astype(float)
 y_train['AWAY'] = (y_train_['AWAY']).astype(float)
 y_train['DRAW'] = (y_train_['DRAW']).astype(float)
-y_train["NO_BET"] = float(-1)
+y_train["NO_BET"] = float(-0.05)
 y_train["ODDS_HOME"] = (X_train['OddsHome']).astype(float)
 y_train["ODDS_AWAY"] = (X_train['OddsAway']).astype(float)
 y_train["ODDS_DRAW"] = (X_train['OddsDraw']).astype(float)
@@ -70,7 +70,7 @@ y_test = pd.DataFrame(columns=['HOME', 'AWAY', 'DRAW', 'NO_BET', 'ODDS_HOME', 'O
 y_test['HOME'] = (y_test_['HOME']).astype(float)
 y_test['AWAY'] = (y_test_['AWAY']).astype(float)
 y_test['DRAW'] = (y_test_['DRAW']).astype(float)
-y_test["NO_BET"] = float(-1)
+y_test["NO_BET"] = float(0)
 y_test["ODDS_HOME"] = (X_test['OddsHome']).astype(float)
 y_test["ODDS_AWAY"] = (X_test['OddsAway']).astype(float)
 y_test["ODDS_DRAW"] = (X_test['OddsDraw']).astype(float)
@@ -82,14 +82,14 @@ X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
 ### PCA
-pca = PCA(n_components=250)
+pca = PCA(n_components=100)
 X_train = pca.fit_transform(X_train)
 X_test = pca.transform(X_test)
 
 
-model = models.get_model(X_test.shape[1], y_test.shape[1]-3, models.odds_loss)
+model, _ = models.get_model(X_test.shape[1], y_test.shape[1]-3, models.odds_loss)
 history = model.fit(X_train, y_train, validation_data=(X_test, y_test),
-          epochs=20, batch_size=32, callbacks=[EarlyStopping(patience=25),ModelCheckpoint('odds_loss.hdf5',save_best_only=True)], shuffle=True)
+          epochs=50, batch_size=32, callbacks=[EarlyStopping(patience=25),ModelCheckpoint('odds_loss.hdf5',save_best_only=True)], shuffle=True)
 
 print(f'Training Loss :{model.evaluate(X_train, y_train.values)}\nValidation Loss :{model.evaluate(X_test, y_test)}')
 
@@ -100,5 +100,10 @@ pred = np.argmax(pred_, axis=1)
 df_pred = pd.DataFrame(columns=['HOME', 'AWAY', 'DRAW', 'NO_BET'], data=pred_)
 y_test.reset_index(inplace=True)
 svar = pd.concat([y_test, df_pred], axis=1)
-print(svar)
+svar.drop(columns=['index'], inplace=True)
 svar.to_csv('./stats/pred.csv', sep=';', index=False)
+
+# Plot loss and accuracy curves
+helper.plot_validation_loss(history)
+
+plt.show()
