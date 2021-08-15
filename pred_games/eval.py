@@ -81,15 +81,15 @@ scaler = MinMaxScaler()
 X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
-### PCA
-pca = PCA(n_components=100)
-X_train = pca.fit_transform(X_train)
-X_test = pca.transform(X_test)
+# ### PCA
+# pca = PCA(n_components=100)
+# X_train = pca.fit_transform(X_train)
+# X_test = pca.transform(X_test)
 
 
 model, _ = models.get_model(X_test.shape[1], y_test.shape[1]-3, models.odds_loss)
 history = model.fit(X_train, y_train, validation_data=(X_test, y_test),
-          epochs=50, batch_size=32, callbacks=[EarlyStopping(patience=25),ModelCheckpoint('odds_loss.hdf5',save_best_only=True)], shuffle=True)
+          epochs=500, batch_size=32, callbacks=[EarlyStopping(patience=25),ModelCheckpoint('odds_loss.hdf5',save_best_only=True)], shuffle=True)
 
 print(f'Training Loss :{model.evaluate(X_train, y_train.values)}\nValidation Loss :{model.evaluate(X_test, y_test)}')
 
