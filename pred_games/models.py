@@ -7,12 +7,12 @@ from keras import backend as K
 def get_model(input_dim, output_dim, loss):
     # create model
     model = Sequential()
-    model.add(Dense(32, input_dim=input_dim, activation='relu', kernel_regularizer=regularizers.l2(0.0001)))
-    model.add(Dropout(0.4))
-    model.add(Dense(16, activation='relu', kernel_regularizer=regularizers.l2(0.0001)))
-    model.add(Dropout(0.4))
+    model.add(Dense(64, input_dim=input_dim, activation='relu', kernel_regularizer=regularizers.l2(0.001)))
+    model.add(Dropout(0.1))
+    model.add(Dense(32, activation='relu', kernel_regularizer=regularizers.l2(0.001)))
+    model.add(Dropout(0.1))
     model.add(Dense(output_dim, activation='softmax'))
-    model.compile(loss=loss, optimizer='adam', metrics=['accuracy'])
+    model.compile(loss=loss, optimizer='sgd', metrics=['accuracy'])
     return model, "De32ReluL2=0.0001_" + "Dr=0.4_" + "De16ReluL2=0.0001_" + "Dr=0.4_" + "softmax, adam"
 
 

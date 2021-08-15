@@ -23,6 +23,7 @@ from sklearn.feature_selection import RFE
 from tensorflow.keras.layers import Dense, Dropout, LSTM, Embedding, Input, concatenate, Lambda, BatchNormalization
 from tensorflow.keras import Model
 from tensorflow.keras.optimizers import Adam
+from tensorboard.plugins.hparams import api as hp
 from tqdm import tqdm
 import time
 
