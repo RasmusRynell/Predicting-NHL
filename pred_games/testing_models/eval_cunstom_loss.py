@@ -45,8 +45,6 @@ df.fillna(0, inplace=True)
 train_data = df.iloc[:int(df.shape[0] * 0.8)]
 test_data = df.iloc[int(df.shape[0] * 0.8):]
 
-# Save test_data
-test_data.to_csv('./stats/test_data.csv', sep=';', index=False)
 
 # construct train test X and y
 X_train = train_data.drop(columns=['Result'])

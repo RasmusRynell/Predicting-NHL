@@ -23,7 +23,6 @@ def add_odds(season):
     df.to_csv(f'./stats/seasons/{season}/{season}_done.csv', sep=';', index=False)
 
 
-
 if __name__ == '__main__':
     for i in tqdm(range(2010, 2021)):
         add_odds(str(i)+str(i+1))
