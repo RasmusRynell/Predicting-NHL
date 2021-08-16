@@ -6,46 +6,43 @@ from tqdm import tqdm
 
 
 def join_seasons_stats(season):
+    dfs = []
     try:
-        df_all_str = pd.read_csv(f'./stats/seasons/{season}/{season}-all_str.csv')
-        df_all_str_rates = pd.read_csv(f'./stats/seasons/{season}/{season}-all_str_rates.csv')
-        df_5v5 = pd.read_csv(f'./stats/seasons/{season}/{season}-5v5.csv')
-        df_5v5_rates = pd.read_csv(f'./stats/seasons/{season}/{season}-5v5_rates.csv')
+        dfs.append(("", pd.read_csv(f'./stats/seasons/{season}/{season}-all_str.csv')))
+        dfs.append(("_all_str_rates", pd.read_csv(f'./stats/seasons/{season}/{season}-all_str_rates.csv')))
+        dfs.append(("_5v5", pd.read_csv(f'./stats/seasons/{season}/{season}-5v5.csv')))
+        dfs.append(("_5v5_rates", pd.read_csv(f'./stats/seasons/{season}/{season}-5v5_rates.csv')))
+        dfs.append(("_5v5_adj", pd.read_csv(f'./stats/seasons/{season}/{season}-5v5_adj.csv')))
+        dfs.append(("_5v5_adj_rates", pd.read_csv(f'./stats/seasons/{season}/{season}-5v5_adj_rates.csv')))
     except FileNotFoundError:
         print(f'ERROR: No data for {season}')
         return
 
     # Set index to be "Game"
-    df_all_str.set_index('Game', inplace=True)
-    df_all_str_rates.set_index('Game', inplace=True)
-    df_5v5.set_index('Game', inplace=True)
-    df_5v5_rates.set_index('Game', inplace=True)
+    for df in dfs:
+        df[1].set_index('Game', inplace=True)
 
     # Sort on index
-    df_all_str.sort_index(inplace=True)
-    df_all_str_rates.sort_index(inplace=True)
-    df_5v5.sort_index(inplace=True)
-    df_5v5_rates.sort_index(inplace=True)
+    for df in dfs:
+        df[1].sort_index(inplace=True)
 
     # Drop columns without a name
-    df_all_str.drop(df_all_str.columns[1], axis=1, inplace=True)
-    df_all_str_rates.drop(df_all_str_rates.columns[1], axis=1, inplace=True)
-    df_5v5.drop(df_5v5.columns[1], axis=1, inplace=True)
-    df_5v5_rates.drop(df_5v5_rates.columns[1], axis=1, inplace=True)
+    for df in dfs:
+        df[1].drop(df[1].columns[1], axis=1, inplace=True)
 
     # Drop columns
-    df_all_str.drop(['Attendance', 'TOI'], axis=1, inplace=True)
-    df_all_str_rates.drop(['Attendance', 'TOI', 'Team'], axis=1, inplace=True)
-    df_5v5.drop(['Attendance', 'TOI', 'Team'], axis=1, inplace=True)
-    df_5v5_rates.drop(['Attendance', 'TOI', 'Team'], axis=1, inplace=True)
+    for i ,df in enumerate(dfs):
+        if i == 0:
+            df[1].drop(['Attendance'], axis=1, inplace=True)
+        else:
+            df[1].drop(['Attendance', 'TOI', 'Team'], axis=1, inplace=True)
 
-    # Append "_5v5" to all column names in df2
-    df_all_str_rates.columns = [x + '_rates' for x in df_all_str_rates.columns]
-    df_5v5.columns = [x + '_5v5' for x in df_5v5.columns]
-    df_5v5_rates.columns = [x + '_5v5_rates' for x in df_5v5_rates.columns]
+    # Append identifier to all column names in df2
+    for df in dfs:
+        df[1].columns = [f'{col}{df[0]}' for col in df[1].columns]
 
     # Concat on index
-    df = pd.concat([df_all_str, df_all_str_rates, df_5v5, df_5v5_rates], axis=1)
+    df = pd.concat([x[1] for x in dfs], axis=1)
 
     # Split "Game" into "Date" and teams
     df['Date'] = df.index.str.split(' - ').str[0]
@@ -71,17 +68,23 @@ def join_seasons_stats(season):
     # fill in '-' (NANs) with 0
     df = df.apply(lambda x: x.replace(to_replace='-', value=0.0), axis=1)
 
+    calculate_stats(df, season)
+
+
+def calculate_stats(df, season):
     # Check if df.shape[0] is divisible by 2
     if df.shape[0] % 2 != 0:
         print(f'WARNING: df.shape[0] is not divisible by 2. {df.shape[0]}')
+
 
     cols_for_this_game = df.columns.to_list().copy()
     for col in [x for x in cols_for_this_game if x not in exclude_avr]:
         df[f'{col}_avr_10_games'] = df.groupby(['Team'])[col].transform(lambda x: x.rolling(10, min_periods=0).mean().shift(1))
         df[f'{col}_avr_season'] = df.groupby(['Team'])[col].transform(lambda x: x.rolling(1000, min_periods=1).mean().shift(1))
 
+
     data = []
-    cols = ["Diff_" + x for x in df.columns]# + ["AwayTeam_" + x for x in df.columns]
+    cols = ["Diff_" + x for x in df.columns]
 
     # Loop through df index with a step of 2
     for i in range(0, df.shape[0], 2):
@@ -93,7 +96,6 @@ def join_seasons_stats(season):
         away_team = df1 if df1.IsHome == 0 else df2
 
         data.append([])
-        #for team in [home_team, away_team]:
         for col in df.columns:
             if col not in exclude_avr:
                 data[-1].append(float(home_team[col]) - float(away_team[col]))
@@ -106,18 +108,19 @@ def join_seasons_stats(season):
         df[index] = df[key]
 
     # Remove unwanted columns
-    cols_for_this_game = ["Diff_" + x for x in cols_for_this_game]# + ["AwayTeam_" + x for x in cols_for_this_game]
+    cols_for_this_game = ["Diff_" + x for x in cols_for_this_game]
     df.drop(cols_for_this_game, axis=1, inplace=True)
-
-    print(df.shape)
 
     # Save to csv
     df.to_csv(f'./stats/seasons/{season}/{season}-together.csv', sep=';', index=False)
 
+    return df
+
 rename_cols = {
     "Diff_Date": "Date",
     "Diff_HomeTeam": "HomeTeam",
-    "Diff_AwayTeam": "AwayTeam"
+    "Diff_AwayTeam": "AwayTeam",
+    "Diff_TOI": "TOI"
 }
 
 exclude_avr = [
@@ -125,7 +128,8 @@ exclude_avr = [
     "Date",
     "AwayTeam",
     "HomeTeam",
-    "IsHome"
+    "IsHome",
+    "TOI"
 ]
 
 if __name__ == "__main__":
