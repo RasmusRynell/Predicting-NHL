@@ -92,7 +92,7 @@ def create_new_stats(df):
     df['POAP'] = df['P']/2
     return df
 
-def adjust_stats_run(df_in):
+def adjust_stats_run(org_df, df_in):
     # Season long averages for league
     home_games_stats = df_in[df_in.IsHome == 1]
     away_games_stats = df_in[df_in.IsHome == 0]
@@ -154,20 +154,22 @@ def adjust_stats_run(df_in):
 
 
 
-        avr_stats[stat_for] = df_in[stat_for] - delta_against[stat_against]
-        avr_stats[stat_against] = df_in[stat_against] - delta_for[stat_for]
+        avr_stats[stat_for] = org_df[stat_for] - delta_against[stat_against]
+        avr_stats[stat_against] = org_df[stat_against] - delta_for[stat_for]
 
     return avr_stats
 
 
 def adjust_stats(df_in, season):
-    df = adjust_stats_run(df_in)
-    for _ in tqdm(range(10)):
-        df = adjust_stats_run(df)
+    # Save df_in as non-modified version
+    df = adjust_stats_run(df_in, df_in)
+    for i in tqdm(range(10)):
+        df = adjust_stats_run(df_in, df)
+
 
     # save to csv
-    df.to_csv(f'./{season}-adjusted-stats.csv', index=True, header=True, sep=';')
-
+    df.to_csv(f'./{season}-adjusted-stats-{i}.csv', index=True, header=True, sep=';')
+    print(df['CF'].describe())
     return df
 
 
