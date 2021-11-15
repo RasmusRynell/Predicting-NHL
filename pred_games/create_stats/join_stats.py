@@ -83,7 +83,8 @@ def join_seasons_stats(season):
     df = df.apply(lambda x: x.replace(to_replace='-', value=0.0), axis=1) # A bit Iffy
 
     adjust_stats(df, season)
-    #calculate_stats(df, season)
+    
+    calculate_averages(df, season)
 
 def create_new_stats(df):
     #for col in df.columns:
@@ -93,39 +94,40 @@ def create_new_stats(df):
     return df
 
 def adjust_stats_run(org_df, df_in):
+    avr_cal_df = df_in
     # Season long averages for league
-    home_games_stats = df_in[df_in.IsHome == 1]
-    away_games_stats = df_in[df_in.IsHome == 0]
+    home_games_stats = avr_cal_df[df_in.IsHome == 1]
+    away_games_stats = avr_cal_df[df_in.IsHome == 0]
 
     league_season_avr_before_game = pd.DataFrame(index=df_in.index)
-    home_league_season_avr_before_game = pd.DataFrame(index=df_in.index)
-    away_league_season_avr_before_game = pd.DataFrame(index=df_in.index)
+    #home_league_season_avr_before_game = pd.DataFrame(index=df_in.index)
+    #away_league_season_avr_before_game = pd.DataFrame(index=df_in.index)
     for col in [x for x in df_in.columns if x not in exclude_avr]:
-        league_season_avr_before_game[col] = df_in[col].transform(lambda x: x.rolling(1000, min_periods=1).mean().shift(1))
-        home_league_season_avr_before_game[col] = home_games_stats[col].transform(lambda x: x.rolling(1000, min_periods=1).mean().shift(1))
-        away_league_season_avr_before_game[col] = away_games_stats[col].transform(lambda x: x.rolling(1000, min_periods=1).mean().shift(1))
+        league_season_avr_before_game[col] = avr_cal_df[col].transform(lambda x: x.rolling(1000, min_periods=1).mean().shift(1))
+        #home_league_season_avr_before_game[col] = home_games_stats[col].transform(lambda x: x.rolling(1000, min_periods=1).mean().shift(1))
+        #away_league_season_avr_before_game[col] = away_games_stats[col].transform(lambda x: x.rolling(1000, min_periods=1).mean().shift(1))
 
     # Season long averages for teams
     team_season_avr_before_game = pd.DataFrame(index=df_in.index)
-    home_team_season_avr_before_game = pd.DataFrame(index=df_in.index)
-    away_team_season_avr_before_game = pd.DataFrame(index=df_in.index)
+    #home_team_season_avr_before_game = pd.DataFrame(index=df_in.index)
+    #away_team_season_avr_before_game = pd.DataFrame(index=df_in.index)
     team_season_avr_before_game['Team'] = df_in['Team']
-    home_team_season_avr_before_game['Team'] = home_games_stats['Team']
-    away_team_season_avr_before_game['Team'] = away_games_stats['Team']
+    #home_team_season_avr_before_game['Team'] = home_games_stats['Team']
+    #away_team_season_avr_before_game['Team'] = away_games_stats['Team']
     for col in [x for x in df_in.columns if x not in exclude_avr]:
-        team_season_avr_before_game[col] = df_in.groupby(['Team'])[col].transform(lambda x: x.rolling(1000, min_periods=1).mean().shift(2))
-        home_team_season_avr_before_game[col] = home_games_stats.groupby(['Team'])[col].transform(lambda x: x.rolling(1000, min_periods=1).mean().shift(1))
-        away_team_season_avr_before_game[col] = away_games_stats.groupby(['Team'])[col].transform(lambda x: x.rolling(1000, min_periods=1).mean().shift(1))
+        team_season_avr_before_game[col] = avr_cal_df.groupby(['Team'])[col].transform(lambda x: x.rolling(1000, min_periods=1).mean().shift(2))
+        #home_team_season_avr_before_game[col] = home_games_stats.groupby(['Team'])[col].transform(lambda x: x.rolling(1000, min_periods=1).mean().shift(1))
+        #away_team_season_avr_before_game[col] = away_games_stats.groupby(['Team'])[col].transform(lambda x: x.rolling(1000, min_periods=1).mean().shift(1))
 
     # Remove duplicate rows
     league_season_avr_before_game = league_season_avr_before_game[~league_season_avr_before_game.index.duplicated(keep='first')]
     # (Multiply rows by 2 in order to make calculations easier in the future)
     league_season_avr_before_game = pd.DataFrame(np.repeat(league_season_avr_before_game.values, 2, axis=0), columns=league_season_avr_before_game.columns, index=df_in.index)
 
-    home_league_season_avr_before_game = home_league_season_avr_before_game[~home_league_season_avr_before_game.index.duplicated(keep='first')]
-    away_league_season_avr_before_game = away_league_season_avr_before_game[~away_league_season_avr_before_game.index.duplicated(keep='first')]
-    home_team_season_avr_before_game = home_team_season_avr_before_game[~home_team_season_avr_before_game.index.duplicated(keep='first')]
-    away_team_season_avr_before_game = away_team_season_avr_before_game[~away_team_season_avr_before_game.index.duplicated(keep='first')]
+    #home_league_season_avr_before_game = home_league_season_avr_before_game[~home_league_season_avr_before_game.index.duplicated(keep='first')]
+    #away_league_season_avr_before_game = away_league_season_avr_before_game[~away_league_season_avr_before_game.index.duplicated(keep='first')]
+    #home_team_season_avr_before_game = home_team_season_avr_before_game[~home_team_season_avr_before_game.index.duplicated(keep='first')]
+    #away_team_season_avr_before_game = away_team_season_avr_before_game[~away_team_season_avr_before_game.index.duplicated(keep='first')]
 
     avr_stats = pd.DataFrame(index=df_in.index)
     for col in exclude_avr:
@@ -137,8 +139,8 @@ def adjust_stats_run(org_df, df_in):
         print("WARNING")
     for stat_for, stat_against in zip(cols[0::2], cols[1::2]):
 
-        delta_for = (team_season_avr_before_game[stat_for] - league_season_avr_before_game[stat_for]).fillna(0)
-        delta_against = (team_season_avr_before_game[stat_against] - league_season_avr_before_game[stat_against]).fillna(0)
+        delta_for = (team_season_avr_before_game[stat_for] - league_season_avr_before_game[stat_for]).fillna(0) # +3 då har du +3
+        delta_against = (team_season_avr_before_game[stat_against] - league_season_avr_before_game[stat_against]).fillna(0) # +3 då har du -3
 
 
         # Do some magic with indexes
@@ -153,11 +155,42 @@ def adjust_stats_run(org_df, df_in):
         delta_against.set_index('Game', inplace=True)
 
 
+        stat_for_df = avr_cal_df[stat_for] - delta_against[stat_against]
+        stat_against_df = avr_cal_df[stat_against] - delta_for[stat_for]
 
-        avr_stats[stat_for] = org_df[stat_for] - delta_against[stat_against]
-        avr_stats[stat_against] = org_df[stat_against] - delta_for[stat_for]
+        # Do some magic with indexes
+        stat_for_df = stat_for_df.reset_index()
+        stat_against_df = stat_against_df.reset_index()
+        new_indexes = [i+1 if i % 2 == 0 else i-1 for i in range(len(stat_for_df))]
+        stat_for_df.index = new_indexes
+        stat_for_df.sort_index(inplace=True)
+        stat_for_df.set_index('Game', inplace=True)
+        stat_against_df.set_index('Game', inplace=True)
+
+        new_stats = stat_for_df / stat_against_df
+        new_stats2 = new_stats.copy()
+
+        new_stats = new_stats.reset_index()
+        new_stats2 = new_stats.reset_index()
+        new_indexes = [i+1 if i % 2 == 0 else i-1 for i in range(len(stat_for_df))]
+        new_stats2.index = new_indexes
+        new_stats2.sort_index(inplace=True)
+
+        new_df_2 = pd.DataFrame(data=[new_stats.values, new_stats2.values], index=new_stats.index)
+
+        # Övre = första lagets stat_against och andra lagets stats_for
+
+        avr_stats[stat_for] = stat_for_df.iloc[:, 0]
+        avr_stats[stat_against] = stat_against_df.iloc[:, 1]
+
 
     return avr_stats
+
+
+def calculate_averages(df, season):
+    pass
+
+
 
 
 def adjust_stats(df_in, season):
@@ -168,8 +201,8 @@ def adjust_stats(df_in, season):
 
 
     # save to csv
-    df.to_csv(f'./{season}-adjusted-stats-{i}.csv', index=True, header=True, sep=';')
     print(df['CF'].describe())
+    df.to_csv(f'./{season}-adjusted-stats.csv', index=True, header=True, sep=';')
     return df
 
 
