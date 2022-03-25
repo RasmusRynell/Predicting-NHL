@@ -1,0 +1,37 @@
+Location 140.30
+
+P% 75.24 - Stat, Percentage of points gained from points available
+opp_P% 86.57
+
+GF/GP 55.12 - Stat, Goals for per game
+opp_GF/GP 65.63
+
+GA/G P 41.07 - Stat, Goals against per game
+opp_GA/GP 43.72
+
+Shots/GP 70.82 - Stat, Shots on goal per game
+opp_Shots/GP 72.97
+
+SA/GP 89.09 - Stat, Shots on goal against per game
+opp_SA/GP 89.22
+
+Even_Str_G_Diff 87.26 - Stat, GF 5v5 - GA 5v5
+opp_Even_Str_G_Di£f 96.50
+
+SAT/GP 117.51 - Stat, SAT For/GP - SAT Agst/GP
+opp_SAT/GP 118.00
+
+USAT/GP 131.17 - Stat, USA T For/GP - USA T Agst/GP
+opp_USAT/GP 131.45
+
+5v5 OZ% 59.10 - Stat, Face-offs starting in offensive zone
+opp_5v5 OZ% 59.59
+
+GF% 87.38 - Stat, Goals for per game
+opp_GF% 96.75
+
+SAT% 117.73 - Stat, SAT For / SAT For + SAT Agst
+opp_SAT% 117.38
+
+USAT% 131.28 - Stat, USAT For / USAT For + USA T Agst
+opp_USAT % 131.11
