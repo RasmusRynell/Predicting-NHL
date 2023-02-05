@@ -130,3 +130,12 @@ dmypy.json
 
 .history/
 .history
+
+*.csv
+*.db
+*.json
+*.bet365
+*.betsson
+*.betway
+*.unibet
+*.wh
